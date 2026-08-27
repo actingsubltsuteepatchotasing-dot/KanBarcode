@@ -1,0 +1,9 @@
+{
+  "name": "kanbarcode",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ระบบบันทึกสถานะการส่งสินค้าด้วยเครื่องยิงบาร์โค้ด - บริษัท เกาอาน จำกัด",
+  "dependencies": {
+    "mssql": "^11.0.1"
+  }
+}

@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KanBarcode | ระบบบันทึกสถานะการส่งสินค้า - บริษัท เกาอาน จำกัด</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --navy:#0f2545; --navy2:#173461; --line:#e3e8f0; --bg:#f4f6fb; --card:#fff;
+  --ink:#16202f; --muted:#6b7a90; --blue:#2563eb; --green:#16a34a; --orange:#ea580c;
+  --yellow:#ca8a04; --red:#dc2626; --purple:#7c3aed; --radius:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:'Noto Sans Thai',Tahoma,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.55}
+button,input,select,textarea{font-family:inherit;font-size:14px}
+h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.03em;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #f0f3f8;vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fafbfe}
+.tbl-wrap{overflow-x:auto}
+.subtle{color:var(--muted);font-size:12.5px}
+.hidden{display:none !important}
+
+.login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(1100px 600px at 15% 10%,#1d3b6d 0%,#0f2545 45%,#081527 100%);z-index:50;padding:20px}
+.login-box{background:#fff;border-radius:18px;padding:38px 34px;width:100%;max-width:392px;box-shadow:0 30px 70px rgba(3,12,28,.45)}
+.brand-mark{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--navy),#2f5ea8);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:22px;margin-bottom:16px}
+.login-box h1{font-size:23px}
+.login-box>p{color:var(--muted);margin:6px 0 24px;font-size:13px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;font-weight:600;color:#41506a;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;outline:0}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+.error{color:var(--red);font-size:12.5px;min-height:18px;margin-bottom:6px}
+
+button{cursor:pointer;border-radius:9px;border:1px solid transparent;padding:9px 15px;font-weight:600;transition:.15s}
+.primary{background:var(--navy);color:#fff}
+.primary:hover{background:var(--navy2)}
+.outline{background:#fff;color:#33415c;border-color:var(--line)}
+.outline:hover{border-color:#b9c4d6;background:#f8fafd}
+.danger{background:#fff;color:var(--red);border-color:#f6cdcd}
+.danger:hover{background:#fef2f2}
+.link{background:none;border:0;color:var(--blue);padding:2px 4px;font-size:13px}
+.link:hover{text-decoration:underline}
+.sm{padding:5px 10px;font-size:12.5px;border-radius:7px}
+
+.app{display:none;min-height:100vh}
+.app.on{display:flex}
+.sidebar{width:236px;flex:0 0 236px;background:var(--navy);color:#cdd8ea;display:flex;flex-direction:column;padding:18px 12px;position:sticky;top:0;height:100vh}
+.logo{display:flex;align-items:center;gap:10px;padding:6px 8px 18px}
+.logo b{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#3f74d1,#7aa5f0);display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
+.logo span{color:#fff;font-weight:700;letter-spacing:.02em;font-size:14px}
+.logo small{display:block;font-weight:400;font-size:10.5px;color:#8ea4c6;letter-spacing:0}
+.nav{flex:1;overflow:auto}
+.nav .section{font-size:10.5px;letter-spacing:.09em;color:#7f95ba;padding:16px 10px 6px}
+.nav button{display:flex;width:100%;align-items:center;gap:10px;background:none;border:0;color:#cdd8ea;padding:9px 10px;border-radius:9px;text-align:left;font-weight:500}
+.nav button:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav button.active{background:#fff;color:var(--navy);font-weight:600}
+.logout{margin-top:8px;background:rgba(255,255,255,.08);color:#cdd8ea;border:0;text-align:left;display:flex;gap:10px;padding:10px}
+.logout:hover{background:rgba(255,255,255,.15);color:#fff}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid var(--line);padding:12px 26px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:20;gap:12px}
+.crumb{font-size:13px;color:var(--muted)}
+.userbox{display:flex;align-items:center;gap:10px;font-size:13px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex:none}
+.content{padding:24px 26px 60px;max-width:1400px;width:100%}
+.view{display:none}
+.view.on{display:block;animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+.eyebrow{font-size:11px;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.page-head h2{font-size:23px;margin-top:3px}
+.head-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.panel.flush{padding:0}
+.panel.flush .panel-title{padding:16px 18px 12px;margin-bottom:0}
+.panel-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.panel-title h3{font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.two{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;margin-top:16px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.stat .label{font-size:12.5px;color:var(--muted)}
+.stat strong{display:block;font-size:27px;margin:4px 0 2px;letter-spacing:-.02em}
+.stat small{font-size:11.5px;color:var(--muted)}
+.stat.blue{border-left:3px solid var(--blue)} .stat.green{border-left:3px solid var(--green)}
+.stat.orange{border-left:3px solid var(--orange)} .stat.yellow{border-left:3px solid var(--yellow)}
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.b-ready{background:#eff6ff;color:#1d4ed8}
+.b-sent{background:#fff7ed;color:#c2410c}
+.b-done{background:#f0fdf4;color:#15803d}
+.b-none{background:#f1f5f9;color:#64748b}
+.b-free{background:#f1f5f9;color:#475569}
+.b-book{background:#f5f3ff;color:#6d28d9}
+.b-travel{background:#fff7ed;color:#c2410c}
+.b-off{background:#fef2f2;color:#b91c1c}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar select,.toolbar input{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:#fff;outline:0}
+.toolbar .grow{flex:1;min-width:180px}
+.notice{background:#f0f6ff;border:1px solid #d3e3fb;color:#1d4ed8;border-radius:9px;padding:10px 13px;font-size:12.5px;margin-bottom:14px}
+.notice.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}
+.notice.ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d}
+.notice.bad{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+.progress-row{display:grid;grid-template-columns:120px 1fr 42px;align-items:center;gap:11px;margin-bottom:11px;font-size:13px}
+.bar{height:9px;border-radius:99px;background:#eef1f7;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--blue);border-radius:99px}
+.empty-state{text-align:center;padding:34px 16px;color:var(--muted);font-size:13px}
+
+.scan-box{background:linear-gradient(120deg,var(--navy),#26497f);color:#fff;border-radius:var(--radius);padding:22px;margin-bottom:16px}
+.scan-box label{font-size:12.5px;color:#b9cbe8;display:block;margin-bottom:7px;font-weight:600}
+.scan-form{display:flex;gap:9px;flex-wrap:wrap}
+.scan-form input{flex:1;min-width:220px;padding:13px 15px;border-radius:10px;border:0;outline:0;font-size:16px;letter-spacing:.04em}
+.scan-form button{padding:13px 22px;background:#fff;color:var(--navy)}
+.scan-cfg{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.scan-cfg>div{flex:1;min-width:200px}
+.scan-cfg label{font-size:12px;color:#b9cbe8;font-weight:600;display:block;margin-bottom:5px}
+.scan-cfg select{width:100%;padding:9px 11px;border-radius:9px;border:0;outline:0}
+.flash{margin-bottom:14px;padding:11px 14px;border-radius:10px;font-size:13px;font-weight:600}
+.flash.ok{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.flash.err{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal .dow{background:var(--navy);color:#fff;border-radius:7px;text-align:center;padding:7px 0;font-size:12px;font-weight:600}
+.cal .day{border:1px solid var(--line);border-radius:9px;min-height:96px;padding:6px;background:#fff;font-size:11px;cursor:pointer;transition:.12s;overflow:hidden}
+.cal .day:hover{border-color:#a9bcdb;box-shadow:0 3px 10px rgba(15,37,69,.07)}
+.cal .day.void{background:#f8fafc;border-style:dashed;cursor:default}
+.cal .day.today{border-color:var(--blue);background:#f7faff}
+.cal .day.sel{border-color:var(--navy);box-shadow:0 0 0 2px rgba(15,37,69,.16)}
+.cal .day em{display:block;font-style:normal;font-weight:700;font-size:12.5px;margin-bottom:4px;color:#33415c}
+.cal .chip{display:block;border-radius:5px;padding:2px 5px;margin-bottom:3px;font-size:10.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px}
+.cal-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+
+.map-frame{width:100%;height:470px;border:0;border-radius:10px;background:#eef2f7;display:block}
+.prov-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px;cursor:pointer;background:#fff}
+.prov-item:hover{border-color:#a9bcdb;background:#f8fafd}
+.prov-item.sel{border-color:var(--navy);background:#f4f7fd}
+.prov-item b{font-size:13px}
+
+.modal{position:fixed;inset:0;background:rgba(10,20,38,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:60}
+.modal.on{display:flex}
+.modal-box{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:580px;max-height:88vh;overflow:auto;box-shadow:0 25px 60px rgba(5,15,35,.35)}
+.modal-box h3{margin-bottom:16px;font-size:17px}
+.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.chk{display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 0}
+.chk input{width:16px;height:16px}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:16px;flex-wrap:wrap}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:9px 13px;color:var(--muted)}
+.tabs button.on{color:var(--navy);border-bottom-color:var(--navy)}
+.tabpage{display:none}.tabpage.on{display:block}
+.drop{border:2px dashed #c6d2e6;border-radius:12px;padding:30px 20px;text-align:center;background:#fafcff;cursor:pointer;transition:.15s}
+.drop:hover,.drop.over{border-color:var(--blue);background:#f2f7ff}
+.drop b{display:block;font-size:15px;margin-bottom:5px}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflow:auto;font-size:11.5px;line-height:1.6}
+.tag{display:inline-block;background:#f1f5f9;border-radius:6px;padding:2px 7px;font-size:11.5px;color:#475569;margin:2px 3px 2px 0}
+@media(max-width:1000px){.two{grid-template-columns:1fr}}
+@media(max-width:820px){
+  .app.on{flex-direction:column}
+  .sidebar{width:100%;flex:none;height:auto;position:static;flex-direction:row;align-items:center;overflow-x:auto;padding:10px}
+  .nav{display:flex;gap:4px}.nav .section{display:none}.nav button span{display:none}
+  .logo{padding:0 10px 0 4px}.logo span{display:none}.logout span{display:none}
+  .content{padding:16px 14px 50px}
+  .row2,.row3{grid-template-columns:1fr}
+  .cal .day{min-height:72px}
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== LOGIN ==================== -->
+<section class="login" id="loginView">
+  <div class="login-box">
+    <div class="brand-mark">K</div>
+    <h1>KanBarcode</h1>
+    <p>ระบบบันทึกสถานะการส่งสินค้า<br>บริษัท เกาอาน จำกัด</p>
+    <form id="loginForm">
+      <div class="field"><label>ชื่อผู้ใช้งาน</label><input id="liUser" autocomplete="username" placeholder="ระบุชื่อผู้ใช้งาน"></div>
+      <div class="field"><label>รหัสผ่าน</label><input id="liPass" type="password" autocomplete="current-password" placeholder="ระบุรหัสผ่าน"></div>
+      <div class="error" id="liErr"></div>
+      <button class="primary" style="width:100%" type="submit">เข้าสู่ระบบ</button>
+    </form>
+    <p class="hint" style="margin-top:16px">ค่าเริ่มต้น: <b>admin / admin888</b> (แก้ไขได้ที่หน้าสิทธิ์ผู้ใช้งาน)</p>
+  </div>
+</section>
+
+<!-- ==================== APP ==================== -->
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="logo"><b>K</b><span>KanBarcode<small>KAO AN CO., LTD.</small></span></div>
+    <nav class="nav" id="nav">
+      <div class="section">เมนูหลัก</div>
+      <button data-view="dashboard" class="active">◈ <span>ภาพรวม</span></button>
+      <button data-view="scan">⌁ <span>ยิงบาร์โค้ด</span></button>
+      <button data-view="calendar">▦ <span>ปฏิทินรถ</span></button>
+      <button data-view="map">⌖ <span>แผนที่การจัดส่ง</span></button>
+      <div class="section">จัดการข้อมูล</div>
+      <button data-view="docs">▤ <span>ข้อมูลเอกสาร</span></button>
+      <button data-view="vehicles">▣ <span>รถและคนขับ</span></button>
+      <button data-view="reports">◫ <span>รายงานประจำวัน</span></button>
+      <button data-view="users">⚙ <span>สิทธิ์ผู้ใช้งาน</span></button>
+    </nav>
+    <button class="logout" id="btnLogout">↪ <span>ออกจากระบบ</span></button>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb" id="crumb">ภาพรวม</div>
+      <div class="userbox"><span id="whoami">ผู้ดูแลระบบ</span><div class="avatar" id="whoavatar">A</div></div>
+    </header>
+    <div class="content">
+
+      <!-- ===== DASHBOARD ===== -->
+      <section class="view on" id="v-dashboard">
+        <div class="page-head">
+          <div><div class="eyebrow" id="dashDate"></div><h2 id="dashHello">ภาพรวมการจัดส่ง</h2></div>
+          <div class="head-actions">
+            <input type="date" id="dashDay" class="outline" style="padding:8px 11px;border:1px solid var(--line);border-radius:9px">
+            <button class="primary sm" data-go="scan">เปิดหน้ายิงบาร์โค้ด</button>
+          </div>
+        </div>
+        <div class="grid" id="dashStats"></div>
+        <div class="two">
+          <div class="panel">
+            <div class="panel-title"><h3>ความคืบหน้าการจัดส่ง</h3><button class="link" data-go="reports">ดูรายงาน →</button></div>
+            <div id="dashProgress"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><h3>สถานะรถวันนี้</h3><button class="link" data-go="calendar">ปฏิทิน →</button></div>
+            <div class="tbl-wrap"><table><tbody id="dashVehicles"></tbody></table></div>
+          </div>
+        </div>
+        <div class="panel flush" style="margin-top:16px">
+          <div class="panel-title"><h3>เอกสารที่อัปเดตล่าสุด</h3><button class="link" data-go="docs">ข้อมูลเอกสารทั้งหมด →</button></div>
+          <div class="tbl-wrap" id="dashRecent"></div>
+        </div>
+      </section>
+
+      <!-- ===== SCAN ===== -->
+      <section class="view" id="v-scan">
+        <div class="page-head">
+          <div><div class="eyebrow">DELIVERY CONTROL</div><h2>ยิงบาร์โค้ดบันทึกสถานะ</h2></div>
+        </div>
+        <div class="scan-box">
+          <div class="scan-cfg">
+            <div><label>รถที่ใช้จัดส่ง</label><select id="scanVehicle"></select></div>
+            <div><label>สถานะที่จะบันทึกเมื่อยิงบาร์โค้ด</label><select id="scanStatus">
+              <option>จัดเสร็จแล้ว</option><option>ส่งแล้ว</option><option>ถึงมือลูกค้าแล้ว</option></select></div>
+          </div>
+          <label>สแกนหรือพิมพ์เลขที่เอกสาร แล้วกด Enter</label>
+          <form class="scan-form" id="scanForm" autocomplete="off">
+            <input id="scanInput" placeholder="ยิงบาร์โค้ดที่นี่ เช่น KB-20260827-001">
+            <button class="primary" type="submit">บันทึกสถานะ</button>
+          </form>
+          <div id="scanVehicleInfo" class="subtle" style="color:#b9cbe8;margin-top:12px"></div>
+        </div>
+        <div id="scanFlash"></div>
+        <div class="toolbar">
+          <input type="date" id="scanDate">
+          <select id="scanFilterVehicle"><option value="">รถทุกคัน</option></select>
+          <select id="scanFilterStatus">
+            <option value="">ทุกสถานะ</option><option>ยังไม่จัด</option>
+            <option>จัดเสร็จแล้ว</option><option>ส่งแล้ว</option><option>ถึงมือลูกค้าแล้ว</option></select>
+          <input class="grow" id="scanSearch" placeholder="ค้นหาเลขที่เอกสาร / ลูกค้า / จังหวัด">
+        </div>
+        <div class="panel flush">
+          <div class="panel-title"><h3>รายการเอกสาร</h3><span class="subtle" id="scanCount"></span></div>
+          <div class="tbl-wrap" id="scanTable"></div>
+        </div>
+      </section>
+
+      <!-- ===== CALENDAR ===== -->
+      <section class="view" id="v-calendar">
+        <div class="page-head">
+          <div><div class="eyebrow">FLEET SCHEDULE</div><h2>ปฏิทินสถานะรถ</h2></div>
+          <div class="head-actions">
+            <button class="outline sm" id="calPrev">← เดือนก่อน</button>
+            <b id="calLabel" style="min-width:150px;text-align:center"></b>
+            <button class="outline sm" id="calNext">เดือนถัดไป →</button>
+            <button class="primary sm" id="btnAddBooking">+ จองรถ</button>
+          </div>
+        </div>
+        <div class="two">
+          <div class="panel">
+            <div class="cal" id="calGrid"></div>
+            <div class="cal-legend">
+              <span><i style="background:#cbd5e1"></i>ว่าง</span>
+              <span><i style="background:#a78bfa"></i>จองแล้ว</span>
+              <span><i style="background:#fb923c"></i>เดินทางอยู่</span>
+            </div>
+          </div>
+          <div class="panel flush">
+            <div class="panel-title"><h3 id="calDayLabel">รายละเอียดวัน</h3></div>
+            <div id="calDayDetail"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== MAP ===== -->
+      <section class="view" id="v-map">
+        <div class="page-head">
+          <div><div class="eyebrow">DELIVERY MAP</div><h2>แผนที่การจัดส่ง (Google Maps)</h2></div>
+          <div class="head-actions">
+            <input type="date" id="mapDate" class="outline" style="padding:8px 11px;border:1px solid var(--line);border-radius:9px">
+            <button class="outline sm" id="btnMapKey">ตั้งค่า Google Maps API Key</button>
+          </div>
+        </div>
+        <div class="two">
+          <div class="panel" style="padding:10px">
+            <div id="mapHost"><iframe class="map-frame" id="mapFrame" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+            <div class="subtle" style="padding:8px 6px 2px" id="mapCaption"></div>
+          </div>
+          <div class="panel flush">
+            <div class="panel-title"><h3>ปลายทางตามจังหวัด</h3><span class="subtle" id="mapCount"></span></div>
+            <div style="padding:0 16px 16px" id="mapProvinces"></div>
+          </div>
+        </div>
+        <div class="panel flush" style="margin-top:16px">
+          <div class="panel-title"><h3>รายการจัดส่งของวันที่เลือก</h3></div>
+          <div class="tbl-wrap" id="mapTable"></div>
+        </div>
+      </section>
+
+      <!-- ===== DOCS ===== -->
+      <section class="view" id="v-docs">
+        <div class="page-head">
+          <div><div class="eyebrow">DOCUMENT SOURCE</div><h2>ข้อมูลเลขที่เอกสาร</h2></div>
+          <div class="head-actions">
+            <button class="outline sm" id="btnTemplate">ดาวน์โหลดไฟล์ตัวอย่าง</button>
+            <button class="primary sm" id="btnAddDoc">+ เพิ่มเอกสาร</button>
+          </div>
+        </div>
+        <div class="tabs" id="docTabs">
+          <button class="on" data-tab="list">รายการเอกสาร</button>
+          <button data-tab="excel">นำเข้าจาก Excel</button>
+          <button data-tab="sql">เชื่อมต่อ SQL Server</button>
+        </div>
+
+        <div class="tabpage on" id="tab-list">
+          <div class="toolbar">
+            <input class="grow" id="docSearch" placeholder="ค้นหาเลขที่เอกสาร / รหัสลูกค้า / ชื่อลูกค้า / จังหวัด">
+            <select id="docFilterStatus"><option value="">ทุกสถานะ</option><option>ยังไม่จัด</option>
+              <option>จัดเสร็จแล้ว</option><option>ส่งแล้ว</option><option>ถึงมือลูกค้าแล้ว</option></select>
+            <button class="outline sm" id="btnExportDocs">ส่งออก CSV</button>
+            <button class="danger sm" id="btnClearDocs">ล้างข้อมูลเอกสาร</button>
+          </div>
+          <div class="panel flush"><div class="panel-title"><h3>เอกสารทั้งหมด</h3><span class="subtle" id="docCount"></span></div>
+            <div class="tbl-wrap" id="docTable"></div></div>
+        </div>
+
+        <div class="tabpage" id="tab-excel">
+          <div class="notice">ไฟล์ Excel (.xlsx / .xls) หรือ CSV ต้องมีคอลัมน์: <b>แถว, เลขที่เอกสาร, วันที่เอกสาร, รหัสลูกค้า, ชื่อลูกค้า, ที่อยู่</b><br>
+            ระบบจะแยก <b>ตำบล / อำเภอ / จังหวัด</b> จากคอลัมน์ที่อยู่ให้อัตโนมัติ (หรือเพิ่มคอลัมน์ ตำบล อำเภอ จังหวัด เองก็ได้)</div>
+          <div class="drop" id="drop">
+            <b>คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่</b>
+            <span class="subtle">รองรับ .xlsx .xls .csv</span>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden">
+          </div>
+          <div id="importMsg"></div>
+          <div id="importPreview"></div>
+        </div>
+
+        <div class="tabpage" id="tab-sql">
+          <div class="notice warn">การเชื่อมต่อ SQL Server ต้องเรียกผ่าน API บนเซิร์ฟเวอร์ (Vercel Serverless Function) เพราะเบราว์เซอร์ต่อ TCP ตรงไปยัง SQL Server ไม่ได้ — ดูโค้ดตัวอย่างด้านล่าง</div>
+          <div class="row2">
+            <div class="panel">
+              <h3 style="margin-bottom:14px">ข้อมูลการเชื่อมต่อ</h3>
+              <div class="row2">
+                <div class="field"><label>Server / Host</label><input id="sqlServer" placeholder="เช่น 192.168.1.10 หรือ SRV\\SQLEXPRESS"></div>
+                <div class="field"><label>Port</label><input id="sqlPort" placeholder="1433"></div>
+              </div>
+              <div class="field"><label>Database</label><input id="sqlDb" placeholder="เช่น KaoAnERP"></div>
+              <div class="row2">
+                <div class="field"><label>Username</label><input id="sqlUser" placeholder="sa"></div>
+                <div class="field"><label>Password</label><input id="sqlPass" type="password" placeholder="••••••••"></div>
+              </div>
+              <div class="field"><label>View / Table ที่ใช้ดึงเลขที่เอกสาร</label><input id="sqlView" placeholder="เช่น dbo.V_DeliveryDocument"></div>
+              <div class="field"><label>API Endpoint</label><input id="sqlApi" placeholder="/api/sqlserver"><div class="hint">Serverless function ที่ทำหน้าที่ต่อกับ SQL Server</div></div>
+              <div class="chk"><input type="checkbox" id="sqlSavePass"><label for="sqlSavePass" style="margin:0">จำรหัสผ่านไว้ในเครื่องนี้</label></div>
+              <div class="modal-actions" style="justify-content:flex-start">
+                <button class="outline" id="btnSqlSave">บันทึกค่า</button>
+                <button class="outline" id="btnSqlTest">ทดสอบเชื่อมต่อ</button>
+                <button class="primary" id="btnSqlPull">ดึงข้อมูลเข้าระบบ</button>
+              </div>
+              <div id="sqlMsg" style="margin-top:12px"></div>
+            </div>
+            <div class="panel">
+              <h3 style="margin-bottom:10px">ตัวอย่าง API สำหรับ Vercel</h3>
+              <p class="subtle">สร้างไฟล์ <span class="mono">api/sqlserver.js</span> แล้วเพิ่ม <span class="mono">mssql</span> ใน package.json</p>
+<pre class="code">import sql from 'mssql'
+
+export default async function handler(req, res) {
+  const { server, port, database, user,
+          password, view, action } = req.body
+
+  try {
+    const pool = await sql.connect({
+      server, port: Number(port) || 1433,
+      database, user, password,
+      options: { encrypt: false,
+                 trustServerCertificate: true }
+    })
+    if (action === 'test')
+      return res.json({ ok: true })
+
+    const r = await pool.request()
+      .query(`SELECT * FROM ${view}`)
+    res.json({ ok: true, rows: r.recordset })
+  } catch (e) {
+    res.status(500).json({ ok: false,
+                           error: e.message })
+  }
+}</pre>
+              <p class="subtle" style="margin-top:10px">คอลัมน์ที่ระบบอ่าน: แถว, เลขที่เอกสาร, วันที่เอกสาร, รหัสลูกค้า, ชื่อลูกค้า, ที่อยู่ (รองรับชื่ออังกฤษ DocNo, DocDate, CustCode, CustName, Address ด้วย)</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== VEHICLES ===== -->
+      <section class="view" id="v-vehicles">
+        <div class="page-head">
+          <div><div class="eyebrow">FLEET MANAGEMENT</div><h2>รถและคนขับ</h2></div>
+          <button class="primary sm" id="btnAddVehicle">+ เพิ่มรถ</button>
+        </div>
+        <div class="grid" id="vehStats"></div>
+        <div class="panel flush" style="margin-top:16px">
+          <div class="panel-title"><h3>ทะเบียนรถทั้งหมด</h3><span class="subtle" id="vehCount"></span></div>
+          <div class="tbl-wrap" id="vehTable"></div>
+        </div>
+      </section>
+
+      <!-- ===== REPORTS ===== -->
+      <section class="view" id="v-reports">
+        <div class="page-head">
+          <div><div class="eyebrow">DAILY REPORT</div><h2>รายงานสรุปการจัดส่ง</h2></div>
+          <div class="head-actions">
+            <label class="subtle">วันที่</label>
+            <input type="date" id="repFrom" class="outline" style="padding:8px 11px;border:1px solid var(--line);border-radius:9px">
+            <label class="subtle">ถึง</label>
+            <input type="date" id="repTo" class="outline" style="padding:8px 11px;border:1px solid var(--line);border-radius:9px">
+            <button class="outline sm" id="btnRepCsv">ส่งออก CSV</button>
+            <button class="outline sm" id="btnRepPrint">พิมพ์</button>
+          </div>
+        </div>
+        <div class="grid" id="repStats"></div>
+        <div class="two">
+          <div class="panel flush"><div class="panel-title"><h3>สรุปตามจังหวัด</h3></div><div class="tbl-wrap" id="repProv"></div></div>
+          <div class="panel flush"><div class="panel-title"><h3>สรุปตามรถ</h3></div><div class="tbl-wrap" id="repVeh"></div></div>
+        </div>
+        <div class="panel flush" style="margin-top:16px">
+          <div class="panel-title"><h3>รายการเอกสารในช่วงที่เลือก</h3><span class="subtle" id="repCount"></span></div>
+          <div class="tbl-wrap" id="repTable"></div>
+        </div>
+      </section>
+
+      <!-- ===== USERS ===== -->
+      <section class="view" id="v-users">
+        <div class="page-head">
+          <div><div class="eyebrow">ACCESS CONTROL</div><h2>สิทธิ์การใช้งาน</h2></div>
+          <button class="primary sm" id="btnAddUser">+ เพิ่มผู้ใช้งาน</button>
+        </div>
+        <div class="notice" id="userNotice">เฉพาะผู้ใช้ระดับ <b>ผู้ดูแลระบบ (admin)</b> เท่านั้นที่แก้ไขสิทธิ์และรหัสผ่านได้</div>
+        <div class="panel flush">
+          <div class="panel-title"><h3>ผู้ใช้งานในระบบ</h3><span class="subtle" id="userCount"></span></div>
+          <div class="tbl-wrap" id="userTable"></div>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <h3 style="margin-bottom:10px">ข้อมูลระบบ</h3>
+          <p class="subtle">ข้อมูลทั้งหมดถูกเก็บใน localStorage ของเบราว์เซอร์เครื่องนี้ สามารถสำรอง/กู้คืนได้</p>
+          <div class="head-actions" style="margin-top:12px">
+            <button class="outline sm" id="btnBackup">สำรองข้อมูล (.json)</button>
+            <button class="outline sm" id="btnRestore">กู้คืนข้อมูล</button>
+            <button class="danger sm" id="btnReset">รีเซ็ตเป็นค่าเริ่มต้น</button>
+            <input type="file" id="restoreInput" accept=".json" class="hidden">
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+<div class="modal" id="modal"><div class="modal-box" id="modalBox"></div></div>
+
+<script>
+"use strict";
+/* ============================================================
+   KanBarcode - ระบบบันทึกสถานะการส่งสินค้า บริษัท เกาอาน จำกัด
+   Static single-file app : no install, no build step
+   ============================================================ */
+
+const KEY = 'kanbarcode.v2';
+const STATUS = ['ยังไม่จัด','จัดเสร็จแล้ว','ส่งแล้ว','ถึงมือลูกค้าแล้ว'];
+const VSTATUS = ['ว่าง','จองแล้ว','เดินทางอยู่'];
+const MENUS = [
+  ['dashboard','ภาพรวม'],['scan','ยิงบาร์โค้ด'],['calendar','ปฏิทินรถ'],['map','แผนที่การจัดส่ง'],
+  ['docs','ข้อมูลเอกสาร'],['vehicles','รถและคนขับ'],['reports','รายงานประจำวัน'],['users','สิทธิ์ผู้ใช้งาน']
+];
+
+/* พิกัดจังหวัด สำหรับปักหมุดบน Google Maps */
+const PROV = {
+  'กรุงเทพมหานคร':[13.7563,100.5018],'นนทบุรี':[13.8591,100.5217],'ปทุมธานี':[14.0208,100.5250],
+  'สมุทรปราการ':[13.5991,100.5998],'สมุทรสาคร':[13.5475,100.2745],'สมุทรสงคราม':[13.4098,100.0021],
+  'นครปฐม':[13.8199,100.0621],'พระนครศรีอยุธยา':[14.3532,100.5689],'อ่างทอง':[14.5896,100.4550],
+  'สิงห์บุรี':[14.8877,100.4013],'ลพบุรี':[14.7995,100.6534],'สระบุรี':[14.5289,100.9101],
+  'ชัยนาท':[15.1851,100.1251],'สุพรรณบุรี':[14.4745,100.1177],'นครนายก':[14.2069,101.2130],
+  'ปราจีนบุรี':[14.0509,101.3700],'สระแก้ว':[13.8240,102.0645],'ฉะเชิงเทรา':[13.6904,101.0779],
+  'ชลบุรี':[13.3611,100.9847],'ระยอง':[12.6814,101.2816],'จันทบุรี':[12.6103,102.1038],
+  'ตราด':[12.2427,102.5175],'ราชบุรี':[13.5283,99.8134],'กาญจนบุรี':[14.0227,99.5328],
+  'เพชรบุรี':[13.1119,99.9399],'ประจวบคีรีขันธ์':[11.8126,99.7957],'นครราชสีมา':[14.9799,102.0978],
+  'บุรีรัมย์':[14.9930,103.1029],'สุรินทร์':[14.8818,103.4960],'ศรีสะเกษ':[15.1186,104.3220],
+  'อุบลราชธานี':[15.2448,104.8473],'ยโสธร':[15.7921,104.1452],'ชัยภูมิ':[15.8068,102.0317],
+  'อำนาจเจริญ':[15.8657,104.6265],'หนองบัวลำภู':[17.2218,102.4266],'ขอนแก่น':[16.4322,102.8236],
+  'อุดรธานี':[17.4138,102.7870],'เลย':[17.4860,101.7223],'หนองคาย':[17.8783,102.7420],
+  'มหาสารคาม':[16.1850,103.3020],'ร้อยเอ็ด':[16.0538,103.6520],'กาฬสินธุ์':[16.4315,103.5059],
+  'สกลนคร':[17.1664,104.1486],'นครพนม':[17.4109,104.7787],'มุกดาหาร':[16.5420,104.7239],
+  'บึงกาฬ':[18.3609,103.6466],'เชียงใหม่':[18.7883,98.9853],'ลำพูน':[18.5744,99.0087],
+  'ลำปาง':[18.2888,99.4909],'อุตรดิตถ์':[17.6200,100.0993],'แพร่':[18.1445,100.1405],
+  'น่าน':[18.7756,100.7730],'พะเยา':[19.1664,99.9003],'เชียงราย':[19.9105,99.8406],
+  'แม่ฮ่องสอน':[19.3020,97.9654],'นครสวรรค์':[15.7047,100.1372],'อุทัยธานี':[15.3794,100.0246],
+  'กำแพงเพชร':[16.4827,99.5226],'ตาก':[16.8840,99.1258],'สุโขทัย':[17.0068,99.8265],
+  'พิษณุโลก':[16.8211,100.2659],'พิจิตร':[16.4429,100.3487],'เพชรบูรณ์':[16.4190,101.1591],
+  'นครศรีธรรมราช':[8.4304,99.9631],'กระบี่':[8.0863,98.9063],'พังงา':[8.4501,98.5255],
+  'ภูเก็ต':[7.8804,98.3923],'สุราษฎร์ธานี':[9.1382,99.3215],'ระนอง':[9.9529,98.6085],
+  'ชุมพร':[10.4930,99.1800],'สงขลา':[7.1897,100.5954],'สตูล':[6.6238,100.0673],
+  'ตรัง':[7.5593,99.6114],'พัทลุง':[7.6167,100.0742],'ปัตตานี':[6.8691,101.2500],
+  'ยะลา':[6.5410,101.2800],'นราธิวาส':[6.4254,101.8253]
+};
+const PROV_NAMES = Object.keys(PROV);
+
+/* ---------- helpers ---------- */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const iso = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const todayISO = () => iso(new Date());
+const TH_MONTH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const TH_MON_S = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function thDate(s){ if(!s) return '-'; const p=String(s).split('-'); if(p.length<3) return s;
+  return Number(p[2])+' '+TH_MON_S[Number(p[1])-1]+' '+(Number(p[0])+543); }
+function thFull(s){ const p=String(s).split('-'); if(p.length<3) return s;
+  return Number(p[2])+' '+TH_MONTH[Number(p[1])-1]+' '+(Number(p[0])+543); }
+function nowStamp(){ const d=new Date(); return iso(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }
+function statusClass(s){ return s==='ถึงมือลูกค้าแล้ว'?'b-done':s==='ส่งแล้ว'?'b-sent':s==='จัดเสร็จแล้ว'?'b-ready':'b-none'; }
+function vstatusClass(s){ return s==='เดินทางอยู่'?'b-travel':s==='จองแล้ว'?'b-book':'b-free'; }
+function vstatusColor(s){ return s==='เดินทางอยู่'?'#ffedd5':s==='จองแล้ว'?'#ede9fe':'#f1f5f9'; }
+function vstatusInk(s){ return s==='เดินทางอยู่'?'#c2410c':s==='จองแล้ว'?'#6d28d9':'#475569'; }
+function uid(p){ return p+'-'+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3); }
+function download(name, content, type){
+  const blob = new Blob(['﻿'+content], {type:type||'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+function csvCell(v){ const s=String(v==null?'':v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+function toCSV(head, rows){ return [head.map(csvCell).join(',')].concat(rows.map(r=>r.map(csvCell).join(','))).join('\n'); }
+
+/* แยก ตำบล/อำเภอ/จังหวัด จากที่อยู่ */
+function parseAddr(a){
+  const r={tambon:'',amphoe:'',province:''};
+  if(!a) return r;
+  const s=String(a);
+  let m=s.match(/(?:ต\.|ตำบล|แขวง)\s*([^\s,]+)/);      if(m) r.tambon  = m[1];
+  m=s.match(/(?:อ\.|อำเภอ|เขต)\s*([^\s,]+)/);          if(m) r.amphoe  = m[1];
+  m=s.match(/(?:จ\.|จังหวัด)\s*([^\s,0-9]+)/);          if(m) r.province= m[1];
+  if(!r.province){
+    if(/กรุงเทพ|กทม/.test(s)) r.province='กรุงเทพมหานคร';
+    else for(const p of PROV_NAMES){ if(s.indexOf(p)>-1){ r.province=p; break; } }
+  }
+  if(r.province && !PROV[r.province]){
+    const hit = PROV_NAMES.find(p=>p.indexOf(r.province)>-1);
+    if(hit) r.province=hit;
+  }
+  return r;
+}
+/* แปลงวันที่จาก Excel เป็น YYYY-MM-DD */
+function normDate(v){
+  if(v==null||v==='') return todayISO();
+  if(v instanceof Date) return iso(v);
+  if(typeof v==='number'){ const d=new Date(Math.round((v-25569)*86400000)); return iso(new Date(d.getTime()+d.getTimezoneOffset()*60000)); }
+  const s=String(v).trim();
+  let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return m[1]+'-'+pad(m[2])+'-'+pad(m[3]);
+  m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+  if(m){ let y=Number(m[3]); if(y>2400) y-=543; return y+'-'+pad(m[2])+'-'+pad(m[1]); }
+  const d=new Date(s); return isNaN(d)?todayISO():iso(d);
+}
+
+/* ---------- data ---------- */
+let DB = null, USER = null;
+
+function seed(){
+  const t = new Date(); const d0=iso(t);
+  const d1=iso(new Date(t.getTime()+86400000)); const dm1=iso(new Date(t.getTime()-86400000));
+  const vehicles = [
+    {id:'KB-01',brand:'Isuzu',model:'NPR 150',plate:'1ฒก 4521',driver:'สมชาย ใจดี',phone:'081-234-5678',type:'รถบรรทุก 6 ล้อ',capacity:'5 ตัน',note:'มีลิฟท์ท้าย',active:true},
+    {id:'KB-02',brand:'Hino',model:'XZU 720',plate:'2ขค 8890',driver:'ประเสริฐ มั่นคง',phone:'082-345-6789',type:'รถบรรทุก 6 ล้อ',capacity:'8 ตัน',note:'ตู้ทึบ',active:true},
+    {id:'KB-03',brand:'Toyota',model:'Hilux Revo',plate:'3กง 1200',driver:'วิชัย ตั้งใจ',phone:'083-456-7890',type:'รถกระบะ',capacity:'1 ตัน',note:'ส่งของด่วนในเขต กทม.',active:true}
+  ];
+  const raw = [
+    ['KB-20260827-001','บริษัท ไทยรุ่งเรือง จำกัด','C-1001','99/12 ต.บ้านสวน อ.เมืองชลบุรี จ.ชลบุรี 20000'],
+    ['KB-20260827-002','ร้านสินทวีการค้า','C-1002','45 ต.ทับมา อ.เมืองระยอง จ.ระยอง 21000'],
+    ['KB-20260827-003','หจก. เจริญพาณิชย์','C-1003','120/5 ต.สนามจันทร์ อ.เมืองนครปฐม จ.นครปฐม 73000'],
+    ['KB-20260827-004','บริษัท สยามวัสดุ จำกัด','C-1004','8 ต.คลองหนึ่ง อ.คลองหลวง จ.ปทุมธานี 12120'],
+    ['KB-20260827-005','ร้านวัสดุบ้านโป่ง','C-1005','77 ต.บ้านโป่ง อ.บ้านโป่ง จ.ราชบุรี 70110'],
+    ['KB-20260827-006','บริษัท อยุธยาเทรดดิ้ง จำกัด','C-1006','19/3 ต.ประตูชัย อ.พระนครศรีอยุธยา จ.พระนครศรีอยุธยา 13000'],
+    ['KB-20260827-007','ร้านโคราชค้าส่ง','C-1007','256 ต.ในเมือง อ.เมืองนครราชสีมา จ.นครราชสีมา 30000'],
+    ['KB-20260827-008','บริษัท บางนาซัพพลาย จำกัด','C-1008','1010 แขวงบางนา เขตบางนา กรุงเทพมหานคร 10260'],
+    ['KB-20260826-011','ร้านศรีราชาวัสดุ','C-1011','5/9 ต.ศรีราชา อ.ศรีราชา จ.ชลบุรี 20110'],
+    ['KB-20260826-012','บริษัท ขอนแก่นโลจิสติกส์ จำกัด','C-1012','300 ต.ในเมือง อ.เมืองขอนแก่น จ.ขอนแก่น 40000']
+  ];
+  const st=['ถึงมือลูกค้าแล้ว','ส่งแล้ว','ส่งแล้ว','จัดเสร็จแล้ว','จัดเสร็จแล้ว','ยังไม่จัด','ยังไม่จัด','ยังไม่จัด','ถึงมือลูกค้าแล้ว','ส่งแล้ว'];
+  const vh=['KB-01','KB-01','KB-02','KB-02','KB-03','','','','KB-01','KB-02'];
+  const docs = raw.map((r,i)=>{
+    const a=parseAddr(r[3]);
+    return {row:i+1, docNo:r[0], docDate:(i<8?d0:dm1), custCode:r[2], custName:r[1], address:r[3],
+      tambon:a.tambon, amphoe:a.amphoe, province:a.province,
+      status:st[i], vehicleId:vh[i], updatedAt:(st[i]==='ยังไม่จัด'?'':nowStamp()), updatedBy:(st[i]==='ยังไม่จัด'?'':'admin'),
+      log: st[i]==='ยังไม่จัด'?[]:[{t:nowStamp(),status:st[i],by:'admin',vehicleId:vh[i]}], source:'ตัวอย่าง'};
+  });
+  const bookings = [
+    {id:uid('BK'),vehicleId:'KB-01',date:d0,province:'ชลบุรี',depart:'07:30',back:'16:00',status:'เดินทางอยู่',note:'ส่ง 3 จุด ชลบุรี-ศรีราชา'},
+    {id:uid('BK'),vehicleId:'KB-02',date:d0,province:'ปทุมธานี',depart:'08:00',back:'15:30',status:'เดินทางอยู่',note:'ส่งคลองหลวง'},
+    {id:uid('BK'),vehicleId:'KB-03',date:d0,province:'ราชบุรี',depart:'09:00',back:'17:00',status:'จองแล้ว',note:'รอจัดของ'},
+    {id:uid('BK'),vehicleId:'KB-01',date:d1,province:'นครราชสีมา',depart:'06:00',back:'18:00',status:'จองแล้ว',note:'เที่ยวไกล'}
+  ];
+  const allPerm = {}; MENUS.forEach(m=>allPerm[m[0]]=true);
+  const staffPerm = {}; MENUS.forEach(m=>staffPerm[m[0]] = (m[0]!=='users'));
+  const users = [
+    {username:'admin', password:'admin888', name:'ผู้ดูแลระบบ', role:'admin', active:true, perms:allPerm},
+    {username:'dispatch', password:'1234', name:'เจ้าหน้าที่จัดส่ง', role:'user', active:true, perms:staffPerm}
+  ];
+  return {vehicles, docs, bookings, users, sql:{server:'',port:'1433',db:'',user:'',pass:'',view:'',api:'/api/sqlserver',savePass:false}, mapKey:''};
+}
+function load(){
+  try{ const raw=localStorage.getItem(KEY); if(raw){ const d=JSON.parse(raw); if(d&&d.users&&d.users.length) return d; } }catch(e){}
+  const s=seed(); localStorage.setItem(KEY, JSON.stringify(s)); return s;
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){ alert('บันทึกข้อมูลไม่สำเร็จ: พื้นที่จัดเก็บเต็ม'); } }
+DB = load();
+
+/* ---------- auth ---------- */
+$('#loginForm').onsubmit = e => {
+  e.preventDefault();
+  const u=$('#liUser').value.trim(), p=$('#liPass').value;
+  const found = DB.users.find(x=>x.username.toLowerCase()===u.toLowerCase() && x.password===p);
+  if(!found){ $('#liErr').textContent='ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'; return; }
+  if(!found.active){ $('#liErr').textContent='บัญชีนี้ถูกระงับการใช้งาน'; return; }
+  USER=found; $('#liErr').textContent=''; $('#liPass').value='';
+  sessionStorage.setItem(KEY+'.user', found.username);
+  startApp();
+};
+$('#btnLogout').onclick = () => {
+  USER=null; sessionStorage.removeItem(KEY+'.user');
+  $('#app').classList.remove('on'); $('#loginView').classList.remove('hidden');
+  $('#liUser').value=''; $('#liUser').focus();
+};
+function can(m){ return USER && (USER.role==='admin' || (USER.perms && USER.perms[m])); }
+function isAdmin(){ return USER && USER.role==='admin'; }
+
+function startApp(){
+  $('#loginView').classList.add('hidden');
+  $('#app').classList.add('on');
+  $('#whoami').textContent = USER.name + (USER.role==='admin'?' (admin)':'');
+  $('#whoavatar').textContent = (USER.name||USER.username).charAt(0).toUpperCase();
+  $$('#nav button').forEach(b=>{ b.classList.toggle('hidden', !can(b.dataset.view)); });
+  const first = MENUS.map(m=>m[0]).find(can) || 'dashboard';
+  const d = todayISO();
+  $('#dashDay').value=d; $('#scanDate').value=d; $('#mapDate').value=d; $('#repFrom').value=d; $('#repTo').value=d;
+  calMonth = new Date(); calSel = d;
+  loadSqlForm();
+  go(first);
+}
+
+/* ---------- navigation ---------- */
+function go(view){
+  if(!can(view)) return;
+  $$('.view').forEach(v=>v.classList.toggle('on', v.id==='v-'+view));
+  $$('#nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  const label = (MENUS.find(m=>m[0]===view)||['','']) [1];
+  $('#crumb').textContent = 'KanBarcode / ' + label;
+  ({dashboard:renderDashboard, scan:renderScan, calendar:renderCalendar, map:renderMap,
+    docs:renderDocs, vehicles:renderVehicles, reports:renderReports, users:renderUsers}[view]||function(){})();
+  window.scrollTo(0,0);
+}
+$('#nav').onclick = e => { const b=e.target.closest('button[data-view]'); if(b) go(b.dataset.view); };
+document.addEventListener('click', e => { const b=e.target.closest('[data-go]'); if(b) go(b.dataset.go); });
+
+/* ---------- modal ---------- */
+function openModal(html){ $('#modalBox').innerHTML=html; $('#modal').classList.add('on'); }
+function closeModal(){ $('#modal').classList.remove('on'); $('#modalBox').innerHTML=''; }
+$('#modal').onclick = e => { if(e.target.id==='modal') closeModal(); };
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+/* ---------- shared lookups ---------- */
+function vehicle(id){ return DB.vehicles.find(v=>v.id===id); }
+function vehicleLabel(id){ const v=vehicle(id); return v? v.id+' • '+v.brand+' • '+v.plate : '-'; }
+function vehicleStatusOn(vid, date){
+  const b = DB.bookings.filter(x=>x.vehicleId===vid && x.date===date);
+  if(!b.length) return {status:'ว่าง', booking:null};
+  const trip = b.find(x=>x.status==='เดินทางอยู่') || b[0];
+  return {status:trip.status, booking:trip};
+}
+function docsOn(date){ return DB.docs.filter(d=>d.docDate===date); }
+function vehicleOptions(sel, includeBlank, blankLabel){
+  const opts = (includeBlank? '<option value="">'+(blankLabel||'- ไม่ระบุรถ -')+'</option>':'') +
+    DB.vehicles.filter(v=>v.active!==false).map(v=>'<option value="'+esc(v.id)+'"'+(v.id===sel?' selected':'')+'>'+
+      esc(v.id+' • '+v.brand+' • '+v.plate+' • '+v.driver)+'</option>').join('');
+  return opts;
+}
+function provinceOptions(sel){
+  return '<option value="">- เลือกจังหวัด -</option>'+PROV_NAMES.map(p=>'<option'+(p===sel?' selected':'')+'>'+esc(p)+'</option>').join('');
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+$('#dashDay').onchange = renderDashboard;
+function renderDashboard(){
+  const day = $('#dashDay').value || todayISO();
+  const ds = docsOn(day);
+  $('#dashDate').textContent = thFull(day);
+  $('#dashHello').textContent = 'สวัสดี, ' + (USER? USER.name : '');
+  const c = s => ds.filter(d=>d.status===s).length;
+  $('#dashStats').innerHTML = [
+    ['เอกสารทั้งหมด', ds.length, 'ของวันที่เลือก','blue'],
+    ['จัดเสร็จแล้ว', c('จัดเสร็จแล้ว'), 'รอขึ้นรถ','yellow'],
+    ['ส่งแล้ว', c('ส่งแล้ว'), 'กำลังเดินทาง','orange'],
+    ['ถึงมือลูกค้าแล้ว', c('ถึงมือลูกค้าแล้ว'), ds.length? Math.round(c('ถึงมือลูกค้าแล้ว')/ds.length*100)+'% ของทั้งวัน':'-','green']
+  ].map(s=>'<div class="stat '+s[3]+'"><span class="label">'+s[0]+'</span><strong>'+s[1]+'</strong><small>'+esc(s[2])+'</small></div>').join('');
+
+  const tot = ds.length||1;
+  $('#dashProgress').innerHTML = STATUS.map((s,i)=>{
+    const n=c(s), col=['#94a3b8','#2563eb','#ea580c','#16a34a'][i];
+    return '<div class="progress-row"><span>'+s+'</span><div class="bar"><i style="width:'+(n/tot*100)+'%;background:'+col+'"></i></div><span>'+n+'</span></div>';
+  }).join('') + (ds.length? '' : '<div class="subtle">ไม่มีเอกสารในวันที่เลือก</div>');
+
+  $('#dashVehicles').innerHTML = DB.vehicles.length ? DB.vehicles.map(v=>{
+    const st = vehicleStatusOn(v.id, day);
+    const time = st.booking ? st.booking.depart+' - '+st.booking.back : '';
+    return '<tr><td><b>'+esc(v.id)+'</b><br><span class="subtle">'+esc(v.driver)+'</span></td>'+
+      '<td><span class="badge '+vstatusClass(st.status)+'">'+st.status+'</span>'+
+      (time?'<br><span class="subtle">'+esc(time)+'</span>':'')+'</td>'+
+      '<td class="subtle">'+esc(st.booking? st.booking.province : '-')+'</td></tr>';
+  }).join('') : '<tr><td class="subtle">ยังไม่มีข้อมูลรถ</td></tr>';
+
+  const recent = DB.docs.filter(d=>d.updatedAt).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0,6);
+  $('#dashRecent').innerHTML = recent.length ? table(
+    ['เลขที่เอกสาร','ลูกค้า','ปลายทาง','รถ','สถานะ','อัปเดต'],
+    recent.map(d=>['<b>'+esc(d.docNo)+'</b>', esc(d.custName),
+      esc([d.tambon,d.amphoe,d.province].filter(Boolean).join(' / ')||'-'),
+      esc(d.vehicleId||'-'),
+      '<span class="badge '+statusClass(d.status)+'">'+esc(d.status)+'</span>',
+      '<span class="subtle">'+esc(d.updatedAt||'-')+'</span>'])
+  ) : '<div class="empty-state">ยังไม่มีการอัปเดตสถานะ</div>';
+}
+function table(head, rows){
+  return '<table><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+}
+
+/* ============================================================
+   SCAN
+   ============================================================ */
+['#scanDate','#scanFilterVehicle','#scanFilterStatus'].forEach(s=>$(s).onchange=renderScanTable);
+$('#scanSearch').oninput = renderScanTable;
+$('#scanVehicle').onchange = () => { renderScanVehicleInfo(); };
+function renderScan(){
+  const cur = $('#scanVehicle').value;
+  $('#scanVehicle').innerHTML = vehicleOptions(cur,true,'- ไม่ระบุรถ -');
+  $('#scanFilterVehicle').innerHTML = '<option value="">รถทุกคัน</option>'+vehicleOptions($('#scanFilterVehicle').value,false);
+  renderScanVehicleInfo();
+  renderScanTable();
+  setTimeout(()=>$('#scanInput').focus(),80);
+}
+function renderScanVehicleInfo(){
+  const v = vehicle($('#scanVehicle').value);
+  if(!v){ $('#scanVehicleInfo').innerHTML='ยังไม่ได้เลือกรถ — เอกสารที่ยิงจะถูกบันทึกสถานะโดยไม่ผูกกับรถ'; return; }
+  const st = vehicleStatusOn(v.id, $('#scanDate').value || todayISO());
+  $('#scanVehicleInfo').innerHTML =
+    '<b>'+esc(v.id)+'</b> • '+esc(v.brand)+' '+esc(v.model||'')+' • ทะเบียน '+esc(v.plate)+
+    ' • คนขับ '+esc(v.driver)+' ('+esc(v.phone||'-')+')'+
+    ' • '+esc(v.type||'')+' '+esc(v.capacity||'')+
+    ' • สถานะวันนี้: '+esc(st.status)+ (st.booking? ' ('+esc(st.booking.depart)+' - '+esc(st.booking.back)+' → '+esc(st.booking.province)+')':'') +
+    (v.note? ' • หมายเหตุ: '+esc(v.note):'');
+}
+function flash(kind,msg){
+  $('#scanFlash').innerHTML = '<div class="flash '+kind+'">'+msg+'</div>';
+  clearTimeout(flash._t); flash._t=setTimeout(()=>{ $('#scanFlash').innerHTML=''; }, 6000);
+}
+$('#scanForm').onsubmit = e => {
+  e.preventDefault();
+  const code = $('#scanInput').value.trim();
+  $('#scanInput').value=''; $('#scanInput').focus();
+  if(!code) return;
+  const d = DB.docs.find(x=>String(x.docNo).toLowerCase()===code.toLowerCase());
+  if(!d){ flash('err','ไม่พบเลขที่เอกสาร "'+esc(code)+'" ในระบบ — กรุณานำเข้าข้อมูลจาก Excel หรือ SQL Server ก่อน'); return; }
+  const st = $('#scanStatus').value, vid = $('#scanVehicle').value;
+  d.status = st;
+  if(vid) d.vehicleId = vid;
+  d.updatedAt = nowStamp(); d.updatedBy = USER.username;
+  d.log = d.log||[]; d.log.push({t:d.updatedAt, status:st, by:USER.username, vehicleId:d.vehicleId||''});
+  save();
+  flash('ok','บันทึกแล้ว: '+esc(d.docNo)+' — '+esc(d.custName)+' → <b>'+esc(st)+'</b>'+(vid?' (รถ '+esc(vid)+')':'')+
+    '<br><span style="font-weight:400">'+esc([d.tambon,d.amphoe,d.province].filter(Boolean).join(' / '))+'</span>');
+  renderScanTable();
+};
+function scanFiltered(){
+  const date=$('#scanDate').value, vf=$('#scanFilterVehicle').value, sf=$('#scanFilterStatus').value;
+  const q=$('#scanSearch').value.trim().toLowerCase();
+  return DB.docs.filter(d=>
+    (!date || d.docDate===date) && (!vf || d.vehicleId===vf) && (!sf || d.status===sf) &&
+    (!q || (d.docNo+' '+d.custName+' '+d.custCode+' '+d.province+' '+d.address).toLowerCase().indexOf(q)>-1));
+}
+function renderScanTable(){
+  const list = scanFiltered();
+  $('#scanCount').textContent = list.length+' รายการ';
+  renderScanVehicleInfo();
+  if(!list.length){ $('#scanTable').innerHTML='<div class="empty-state">ไม่พบเอกสารตามเงื่อนไขที่เลือก</div>'; return; }
+  $('#scanTable').innerHTML = table(
+    ['เลขที่เอกสาร','วันที่','ลูกค้า','ที่อยู่ / ตำบล-อำเภอ-จังหวัด','รถ','สถานะ','อัปเดตสถานะ'],
+    list.map(d=>{
+      const i = DB.docs.indexOf(d);
+      return ['<b>'+esc(d.docNo)+'</b>', '<span class="subtle">'+thDate(d.docDate)+'</span>',
+        esc(d.custName)+'<br><span class="subtle">'+esc(d.custCode)+'</span>',
+        '<span class="subtle">'+esc(d.address)+'</span><br>'+
+          [d.tambon&&'ต.'+d.tambon, d.amphoe&&'อ.'+d.amphoe, d.province&&'จ.'+d.province].filter(Boolean).map(t=>'<span class="tag">'+esc(t)+'</span>').join(''),
+        '<select class="sm" data-setveh="'+i+'" style="padding:5px;border:1px solid var(--line);border-radius:7px">'+vehicleOptions(d.vehicleId,true)+'</select>',
+        '<span class="badge '+statusClass(d.status)+'">'+esc(d.status)+'</span>'+(d.updatedAt?'<br><span class="subtle">'+esc(d.updatedAt)+'</span>':''),
+        '<select data-setstatus="'+i+'" style="padding:5px;border:1px solid var(--line);border-radius:7px">'+
+          STATUS.map(s=>'<option'+(s===d.status?' selected':'')+'>'+s+'</option>').join('')+'</select>'];
+    }));
+  $$('#scanTable [data-setstatus]').forEach(sel=>sel.onchange=e=>{
+    const d=DB.docs[+e.target.dataset.setstatus]; d.status=e.target.value;
+    d.updatedAt=nowStamp(); d.updatedBy=USER.username;
+    d.log=d.log||[]; d.log.push({t:d.updatedAt,status:d.status,by:USER.username,vehicleId:d.vehicleId||''});
+    save(); renderScanTable();
+  });
+  $$('#scanTable [data-setveh]').forEach(sel=>sel.onchange=e=>{
+    DB.docs[+e.target.dataset.setveh].vehicleId=e.target.value; save(); renderScanTable();
+  });
+}
+
+/* ============================================================
+   CALENDAR
+   ============================================================ */
+let calMonth = new Date(), calSel = todayISO();
+$('#calPrev').onclick=()=>{ calMonth.setMonth(calMonth.getMonth()-1); renderCalendar(); };
+$('#calNext').onclick=()=>{ calMonth.setMonth(calMonth.getMonth()+1); renderCalendar(); };
+$('#btnAddBooking').onclick=()=>bookingForm(null, calSel);
+function renderCalendar(){
+  const y=calMonth.getFullYear(), m=calMonth.getMonth();
+  $('#calLabel').textContent = TH_MONTH[m]+' '+(y+543);
+  const first=new Date(y,m,1).getDay(), days=new Date(y,m+1,0).getDate(), today=todayISO();
+  let html = ['อา','จ','อ','พ','พฤ','ศ','ส'].map(d=>'<div class="dow">'+d+'</div>').join('');
+  for(let i=0;i<first;i++) html+='<div class="day void"></div>';
+  for(let d=1;d<=days;d++){
+    const date = y+'-'+pad(m+1)+'-'+pad(d);
+    const bk = DB.bookings.filter(b=>b.date===date);
+    const dn = docsOn(date).length;
+    const chips = bk.slice(0,3).map(b=>'<span class="chip" style="background:'+vstatusColor(b.status)+';color:'+vstatusInk(b.status)+'">'+
+      esc(b.vehicleId)+' '+esc(b.depart)+' '+esc(b.province)+'</span>').join('') +
+      (bk.length>3?'<span class="chip" style="background:#f1f5f9;color:#64748b">+'+(bk.length-3)+' รายการ</span>':'') +
+      (dn?'<span class="chip" style="background:#eff6ff;color:#1d4ed8">เอกสาร '+dn+'</span>':'');
+    html += '<div class="day'+(date===today?' today':'')+(date===calSel?' sel':'')+'" data-date="'+date+'"><em>'+d+'</em>'+chips+'</div>';
+  }
+  $('#calGrid').innerHTML = html;
+  $$('#calGrid .day[data-date]').forEach(el=>el.onclick=()=>{ calSel=el.dataset.date; renderCalendar(); });
+  renderCalDay();
+}
+function renderCalDay(){
+  $('#calDayLabel').textContent = thFull(calSel);
+  const bk = DB.bookings.filter(b=>b.date===calSel);
+  const free = DB.vehicles.filter(v=>v.active!==false && !bk.some(b=>b.vehicleId===v.id));
+  let html = '<div style="padding:0 16px 16px">';
+  if(bk.length){
+    html += bk.map(b=>{
+      const v=vehicle(b.vehicleId)||{};
+      return '<div class="prov-item" style="cursor:default;display:block">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
+        '<b>'+esc(b.vehicleId)+' • '+esc(v.plate||'-')+'</b>'+
+        '<span class="badge '+vstatusClass(b.status)+'">'+esc(b.status)+'</span></div>'+
+        '<div class="subtle" style="margin-top:4px">คนขับ '+esc(v.driver||'-')+' • ปลายทาง '+esc(b.province||'-')+'</div>'+
+        '<div class="subtle">ออกเดินทาง '+esc(b.depart||'-')+' น. • กลับถึง '+esc(b.back||'-')+' น.'+(b.note?' • '+esc(b.note):'')+'</div>'+
+        '<div style="margin-top:6px"><button class="link" data-editbk="'+esc(b.id)+'">แก้ไข</button>'+
+        '<button class="link" style="color:var(--red)" data-delbk="'+esc(b.id)+'">ลบ</button></div></div>';
+    }).join('');
+  } else html += '<div class="empty-state">ยังไม่มีการจองรถในวันนี้</div>';
+  if(free.length) html += '<div class="subtle" style="margin-top:10px">รถว่าง: '+free.map(v=>'<span class="tag">'+esc(v.id+' '+v.plate)+'</span>').join('')+'</div>';
+  html += '<button class="primary sm" style="margin-top:12px" id="calAdd">+ จองรถวันนี้</button></div>';
+  $('#calDayDetail').innerHTML = html;
+  $('#calAdd').onclick = ()=>bookingForm(null, calSel);
+  $$('[data-editbk]').forEach(b=>b.onclick=()=>bookingForm(DB.bookings.find(x=>x.id===b.dataset.editbk)));
+  $$('[data-delbk]').forEach(b=>b.onclick=()=>{
+    if(!confirm('ยืนยันลบรายการจองนี้?')) return;
+    DB.bookings = DB.bookings.filter(x=>x.id!==b.dataset.delbk); save(); renderCalendar();
+  });
+}
+function bookingForm(b, date){
+  const e = b || {vehicleId:'',date:date||todayISO(),province:'',depart:'08:00',back:'17:00',status:'จองแล้ว',note:''};
+  openModal('<h3>'+(b?'แก้ไขการจองรถ':'จองรถ / กำหนดสถานะเดินทาง')+'</h3>'+
+    '<div class="field"><label>รถ</label><select id="bkVeh">'+vehicleOptions(e.vehicleId,true,'- เลือกรถ -')+'</select></div>'+
+    '<div class="row2"><div class="field"><label>วันที่</label><input type="date" id="bkDate" value="'+esc(e.date)+'"></div>'+
+    '<div class="field"><label>สถานะรถ</label><select id="bkStatus">'+VSTATUS.map(s=>'<option'+(s===e.status?' selected':'')+'>'+s+'</option>').join('')+'</select></div></div>'+
+    '<div class="field"><label>จังหวัดปลายทาง</label><select id="bkProv">'+provinceOptions(e.province)+'</select></div>'+
+    '<div class="row2"><div class="field"><label>เวลาเดินทางไป</label><input type="time" id="bkDepart" value="'+esc(e.depart)+'"></div>'+
+    '<div class="field"><label>เวลาเดินทางกลับ</label><input type="time" id="bkBack" value="'+esc(e.back)+'"></div></div>'+
+    '<div class="field"><label>หมายเหตุ</label><input id="bkNote" value="'+esc(e.note)+'"></div>'+
+    '<div class="modal-actions"><button class="outline" onclick="closeModal()">ยกเลิก</button>'+
+    '<button class="primary" id="bkSave">บันทึก</button></div>');
+  $('#bkSave').onclick = () => {
+    const v=$('#bkVeh').value;
+    if(!v){ alert('กรุณาเลือกรถ'); return; }
+    const rec = {id: b?b.id:uid('BK'), vehicleId:v, date:$('#bkDate').value, province:$('#bkProv').value,
+      depart:$('#bkDepart').value, back:$('#bkBack').value, status:$('#bkStatus').value, note:$('#bkNote').value.trim()};
+    if(b) Object.assign(b, rec); else DB.bookings.push(rec);
+    save(); closeModal(); calSel=rec.date; calMonth=new Date(rec.date); renderCalendar();
+  };
+}
+
+/* ============================================================
+   MAP (Google Maps)
+   ============================================================ */
+let mapSelProv = '';
+$('#mapDate').onchange = () => { mapSelProv=''; renderMap(); };
+$('#btnMapKey').onclick = () => {
+  openModal('<h3>Google Maps API Key</h3>'+
+    '<p class="subtle">ถ้าใส่ API Key ระบบจะแสดงแผนที่แบบปักหมุดหลายจุดพร้อมกัน (Maps JavaScript API)<br>ถ้าไม่ใส่ ระบบจะใช้ Google Maps แบบฝัง (embed) ซึ่งใช้งานได้ทันทีโดยไม่ต้องมี Key</p>'+
+    '<div class="field" style="margin-top:14px"><label>API Key</label><input id="mkInput" value="'+esc(DB.mapKey||'')+'" placeholder="AIza..."></div>'+
+    '<div class="modal-actions"><button class="outline" onclick="closeModal()">ยกเลิก</button><button class="primary" id="mkSave">บันทึก</button></div>');
+  $('#mkSave').onclick = () => { DB.mapKey=$('#mkInput').value.trim(); save(); closeModal(); renderMap(); };
+};
+function renderMap(){
+  const date = $('#mapDate').value || todayISO();
+  const ds = docsOn(date).filter(d=>d.province);
+  const bks = DB.bookings.filter(b=>b.date===date && b.province);
+  const groups = {};
+  ds.forEach(d=>{ (groups[d.province]=groups[d.province]||{docs:[],veh:new Set()}); groups[d.province].docs.push(d); if(d.vehicleId) groups[d.province].veh.add(d.vehicleId); });
+  bks.forEach(b=>{ (groups[b.province]=groups[b.province]||{docs:[],veh:new Set()}); groups[b.province].veh.add(b.vehicleId); });
+  const names = Object.keys(groups);
+  if(!mapSelProv || !groups[mapSelProv]) mapSelProv = names[0]||'';
+  $('#mapCount').textContent = names.length+' จังหวัด / '+ds.length+' เอกสาร';
+
+  $('#mapProvinces').innerHTML = names.length ? names.map(p=>{
+    const g=groups[p], vs=Array.from(g.veh);
+    return '<div class="prov-item'+(p===mapSelProv?' sel':'')+'" data-prov="'+esc(p)+'"><div><b>'+esc(p)+'</b>'+
+      '<div class="subtle">'+g.docs.length+' เอกสาร'+(vs.length?' • รถ '+esc(vs.join(', ')):'')+'</div></div>'+
+      '<span class="badge b-ready">ดูแผนที่</span></div>';
+  }).join('') : '<div class="empty-state">ไม่มีข้อมูลปลายทางของวันที่เลือก<br><span class="subtle">กำหนดจังหวัดได้จากที่อยู่ในเอกสาร หรือการจองรถในปฏิทิน</span></div>';
+  $$('#mapProvinces [data-prov]').forEach(el=>el.onclick=()=>{ mapSelProv=el.dataset.prov; renderMap(); });
+
+  drawMap(groups, date);
+
+  $('#mapTable').innerHTML = ds.length ? table(
+    ['เลขที่เอกสาร','ลูกค้า','ตำบล','อำเภอ','จังหวัด','รถ','สถานะ',''],
+    ds.map(d=>['<b>'+esc(d.docNo)+'</b>', esc(d.custName), esc(d.tambon||'-'), esc(d.amphoe||'-'), esc(d.province||'-'),
+      esc(d.vehicleId||'-'), '<span class="badge '+statusClass(d.status)+'">'+esc(d.status)+'</span>',
+      '<button class="link" data-pin="'+esc(d.docNo)+'">ดูบนแผนที่</button>'])
+  ) : '<div class="empty-state">ไม่มีเอกสารในวันที่เลือก</div>';
+  $$('#mapTable [data-pin]').forEach(b=>b.onclick=()=>{
+    const d=DB.docs.find(x=>x.docNo===b.dataset.pin);
+    const q=[d.tambon&&'ตำบล'+d.tambon, d.amphoe&&'อำเภอ'+d.amphoe, d.province&&'จังหวัด'+d.province].filter(Boolean).join(' ')||d.address;
+    showEmbed(q, d.custName+' — '+q);
+  });
+}
+function drawMap(groups, date){
+  const names = Object.keys(groups);
+  if(DB.mapKey){ drawJsMap(groups); return; }
+  if(!mapSelProv || !names.length){ showEmbed('ประเทศไทย','แผนที่ประเทศไทย — ยังไม่มีปลายทางของวันที่ '+thDate(date)); return; }
+  const g = groups[mapSelProv];
+  const d = g.docs[0];
+  const q = d ? [d.tambon&&'ตำบล'+d.tambon, d.amphoe&&'อำเภอ'+d.amphoe, 'จังหวัด'+mapSelProv].filter(Boolean).join(' ')
+              : 'จังหวัด'+mapSelProv;
+  const vs = Array.from(g.veh);
+  showEmbed(q, 'วันที่ '+thDate(date)+' • '+mapSelProv+' • '+g.docs.length+' เอกสาร'+(vs.length?' • รถ '+vs.join(', '):'')+
+    (d? ' • ตัวอย่างจุดส่ง: '+d.custName : ''));
+}
+function showEmbed(query, caption){
+  $('#mapHost').innerHTML = '<iframe class="map-frame" id="mapFrame" loading="lazy" referrerpolicy="no-referrer-when-downgrade" '+
+    'src="https://www.google.com/maps?q='+encodeURIComponent(query)+'&hl=th&z=11&output=embed"></iframe>';
+  $('#mapCaption').textContent = caption||'';
+}
+let gmap=null, gmarkers=[];
+function drawJsMap(groups){
+  $('#mapCaption').textContent = 'แผนที่แบบปักหมุด (Maps JavaScript API)';
+  if(!window.google || !window.google.maps){
+    if(!drawJsMap._loading){
+      drawJsMap._loading = true;
+      const s=document.createElement('script');
+      s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(DB.mapKey)+'&language=th&callback=__gmapReady';
+      s.async=true; s.onerror=()=>{ drawJsMap._loading=false; DB.mapKey=''; save();
+        $('#mapCaption').textContent='โหลด Google Maps API ไม่สำเร็จ — กลับไปใช้แผนที่แบบฝังแทน'; renderMap(); };
+      window.__gmapReady = ()=>{ drawJsMap._loading=false; renderMap(); };
+      document.head.appendChild(s);
+    }
+    $('#mapHost').innerHTML='<div class="map-frame" style="display:flex;align-items:center;justify-content:center;color:var(--muted)">กำลังโหลด Google Maps…</div>';
+    return;
+  }
+  if(!gmap || !$('#gmapDiv')){
+    $('#mapHost').innerHTML='<div id="gmapDiv" class="map-frame"></div>';
+    gmap = new google.maps.Map($('#gmapDiv'), {center:{lat:13.7,lng:100.5}, zoom:6, mapTypeControl:false});
+  }
+  gmarkers.forEach(m=>m.setMap(null)); gmarkers=[];
+  const bounds = new google.maps.LatLngBounds(); let any=false;
+  Object.keys(groups).forEach(p=>{
+    const c = PROV[p]; if(!c) return;
+    const g = groups[p], vs=Array.from(g.veh);
+    const pos = {lat:c[0], lng:c[1]};
+    const mk = new google.maps.Marker({position:pos, map:gmap, title:p+' ('+g.docs.length+' เอกสาร)'});
+    const iw = new google.maps.InfoWindow({content:'<div style="font-family:sans-serif;font-size:13px"><b>'+esc(p)+'</b><br>'+
+      g.docs.length+' เอกสาร'+(vs.length?'<br>รถ: '+esc(vs.join(', ')):'')+
+      '<br>'+g.docs.slice(0,5).map(d=>esc(d.docNo+' - '+d.custName)).join('<br>')+'</div>'});
+    mk.addListener('click',()=>iw.open(gmap,mk));
+    gmarkers.push(mk); bounds.extend(pos); any=true;
+  });
+  if(any) gmap.fitBounds(bounds, 60);
+}
+
+/* ============================================================
+   DOCS + IMPORT
+   ============================================================ */
+$('#docTabs').onclick = e => {
+  const b=e.target.closest('button[data-tab]'); if(!b) return;
+  $$('#docTabs button').forEach(x=>x.classList.toggle('on',x===b));
+  $$('#v-docs .tabpage').forEach(p=>p.classList.toggle('on', p.id==='tab-'+b.dataset.tab));
+};
+$('#docSearch').oninput = renderDocTable;
+$('#docFilterStatus').onchange = renderDocTable;
+function renderDocs(){ renderDocTable(); }
+function docFiltered(){
+  const q=$('#docSearch').value.trim().toLowerCase(), s=$('#docFilterStatus').value;
+  return DB.docs.filter(d=>(!s||d.status===s) &&
+    (!q || (d.docNo+' '+d.custCode+' '+d.custName+' '+d.province+' '+d.address).toLowerCase().indexOf(q)>-1));
+}
+function renderDocTable(){
+  const list=docFiltered();
+  $('#docCount').textContent = list.length+' / '+DB.docs.length+' รายการ';
+  $('#docTable').innerHTML = list.length ? table(
+    ['แถว','เลขที่เอกสาร','วันที่เอกสาร','รหัสลูกค้า','ชื่อลูกค้า','ที่อยู่','ตำบล','อำเภอ','จังหวัด','รถ','สถานะ',''],
+    list.map(d=>['<span class="subtle">'+esc(d.row||'')+'</span>','<b>'+esc(d.docNo)+'</b>', thDate(d.docDate),
+      esc(d.custCode), esc(d.custName), '<span class="subtle">'+esc(d.address)+'</span>',
+      esc(d.tambon||'-'), esc(d.amphoe||'-'), esc(d.province||'-'), esc(d.vehicleId||'-'),
+      '<span class="badge '+statusClass(d.status)+'">'+esc(d.status)+'</span>',
+      '<button class="link" data-editdoc="'+esc(d.docNo)+'">แก้ไข</button>'+
+      '<button class="link" data-hist="'+esc(d.docNo)+'">ประวัติ</button>'+
+      '<button class="link" style="color:var(--red)" data-deldoc="'+esc(d.docNo)+'">ลบ</button>'])
+  ) : '<div class="empty-state">ยังไม่มีข้อมูลเอกสาร — นำเข้าจาก Excel หรือเชื่อมต่อ SQL Server ที่แท็บด้านบน</div>';
+  $$('#docTable [data-editdoc]').forEach(b=>b.onclick=()=>docForm(DB.docs.find(x=>x.docNo===b.dataset.editdoc)));
+  $$('#docTable [data-hist]').forEach(b=>b.onclick=()=>docHistory(DB.docs.find(x=>x.docNo===b.dataset.hist)));
+  $$('#docTable [data-deldoc]').forEach(b=>b.onclick=()=>{
+    if(!confirm('ลบเอกสาร '+b.dataset.deldoc+' ?')) return;
+    DB.docs=DB.docs.filter(x=>x.docNo!==b.dataset.deldoc); save(); renderDocTable();
+  });
+}
+$('#btnAddDoc').onclick = ()=>docForm(null);
+function docForm(d){
+  const e = d || {row:DB.docs.length+1,docNo:'',docDate:todayISO(),custCode:'',custName:'',address:'',tambon:'',amphoe:'',province:'',status:'ยังไม่จัด',vehicleId:''};
+  openModal('<h3>'+(d?'แก้ไขเอกสาร':'เพิ่มเอกสาร')+'</h3>'+
+    '<div class="row2"><div class="field"><label>เลขที่เอกสาร *</label><input id="dfNo" value="'+esc(e.docNo)+'"'+(d?' readonly':'')+'></div>'+
+    '<div class="field"><label>วันที่เอกสาร</label><input type="date" id="dfDate" value="'+esc(e.docDate)+'"></div></div>'+
+    '<div class="row2"><div class="field"><label>รหัสลูกค้า</label><input id="dfCode" value="'+esc(e.custCode)+'"></div>'+
+    '<div class="field"><label>ชื่อลูกค้า</label><input id="dfName" value="'+esc(e.custName)+'"></div></div>'+
+    '<div class="field"><label>ที่อยู่</label><textarea id="dfAddr" rows="2">'+esc(e.address)+'</textarea>'+
+    '<div class="hint">กด "แยกที่อยู่อัตโนมัติ" เพื่อดึงตำบล/อำเภอ/จังหวัด</div></div>'+
+    '<button class="outline sm" id="dfParse" style="margin-bottom:12px">แยกที่อยู่อัตโนมัติ</button>'+
+    '<div class="row3"><div class="field"><label>ตำบล / แขวง</label><input id="dfTam" value="'+esc(e.tambon)+'"></div>'+
+    '<div class="field"><label>อำเภอ / เขต</label><input id="dfAmp" value="'+esc(e.amphoe)+'"></div>'+
+    '<div class="field"><label>จังหวัด</label><select id="dfProv">'+provinceOptions(e.province)+'</select></div></div>'+
+    '<div class="row2"><div class="field"><label>รถที่จัดส่ง</label><select id="dfVeh">'+vehicleOptions(e.vehicleId,true)+'</select></div>'+
+    '<div class="field"><label>สถานะ</label><select id="dfStatus">'+STATUS.map(s=>'<option'+(s===e.status?' selected':'')+'>'+s+'</option>').join('')+'</select></div></div>'+
+    '<div class="modal-actions"><button class="outline" onclick="closeModal()">ยกเลิก</button><button class="primary" id="dfSave">บันทึก</button></div>');
+  $('#dfParse').onclick = () => {
+    const a=parseAddr($('#dfAddr').value);
+    if(a.tambon) $('#dfTam').value=a.tambon;
+    if(a.amphoe) $('#dfAmp').value=a.amphoe;
+    if(a.province) $('#dfProv').value=a.province;
+  };
+  $('#dfSave').onclick = () => {
+    const no=$('#dfNo').value.trim();
+    if(!no){ alert('กรุณาระบุเลขที่เอกสาร'); return; }
+    if(!d && DB.docs.some(x=>x.docNo===no)){ alert('มีเลขที่เอกสารนี้อยู่แล้ว'); return; }
+    const rec = {row:e.row, docNo:no, docDate:$('#dfDate').value, custCode:$('#dfCode').value.trim(),
+      custName:$('#dfName').value.trim(), address:$('#dfAddr').value.trim(), tambon:$('#dfTam').value.trim(),
+      amphoe:$('#dfAmp').value.trim(), province:$('#dfProv').value, vehicleId:$('#dfVeh').value, status:$('#dfStatus').value,
+      updatedAt:nowStamp(), updatedBy:USER.username, log:(d&&d.log)||[], source:(d&&d.source)||'กรอกเอง'};
+    rec.log.push({t:rec.updatedAt,status:rec.status,by:USER.username,vehicleId:rec.vehicleId});
+    if(d) Object.assign(d,rec); else DB.docs.push(rec);
+    save(); closeModal(); renderDocTable();
+  };
+}
+function docHistory(d){
+  const rows=(d.log||[]).slice().reverse();
+  openModal('<h3>ประวัติสถานะ — '+esc(d.docNo)+'</h3>'+
+    '<p class="subtle">'+esc(d.custName)+'<br>'+esc(d.address)+'</p>'+
+    (rows.length? '<div class="tbl-wrap" style="margin-top:14px">'+table(['เวลา','สถานะ','รถ','ผู้บันทึก'],
+      rows.map(l=>[esc(l.t),'<span class="badge '+statusClass(l.status)+'">'+esc(l.status)+'</span>',esc(l.vehicleId||'-'),esc(l.by)]))+'</div>'
+      : '<div class="empty-state">ยังไม่มีประวัติการอัปเดต</div>')+
+    '<div class="modal-actions"><button class="outline" onclick="closeModal()">ปิด</button></div>');
+}
+$('#btnExportDocs').onclick = () => {
+  const list=docFiltered();
+  download('KanBarcode-documents-'+todayISO()+'.csv',
+    toCSV(['แถว','เลขที่เอกสาร','วันที่เอกสาร','รหัสลูกค้า','ชื่อลูกค้า','ที่อยู่','ตำบล','อำเภอ','จังหวัด','รถ','สถานะ','อัปเดตล่าสุด'],
+      list.map(d=>[d.row,d.docNo,d.docDate,d.custCode,d.custName,d.address,d.tambon,d.amphoe,d.province,d.vehicleId,d.status,d.updatedAt])));
+};
+$('#btnClearDocs').onclick = () => {
+  if(!isAdmin()){ alert('เฉพาะผู้ดูแลระบบเท่านั้น'); return; }
+  if(!confirm('ล้างข้อมูลเอกสารทั้งหมด ('+DB.docs.length+' รายการ) ?')) return;
+  DB.docs=[]; save(); renderDocTable();
+};
+$('#btnTemplate').onclick = () => {
+  download('KanBarcode-template.csv', toCSV(
+    ['แถว','เลขที่เอกสาร','วันที่เอกสาร','รหัสลูกค้า','ชื่อลูกค้า','ที่อยู่'],
+    [[1,'KB-20260827-001','2026-08-27','C-1001','บริษัท ตัวอย่าง จำกัด','99/12 ต.บ้านสวน อ.เมืองชลบุรี จ.ชลบุรี 20000'],
+     [2,'KB-20260827-002','2026-08-27','C-1002','ร้านตัวอย่างการค้า','45 ต.ทับมา อ.เมืองระยอง จ.ระยอง 21000']]));
+};
+
+/* --- import --- */
+const HEAD_MAP = {
+  row:['แถว','ลำดับ','ที่','no','row','seq'],
+  docNo:['เลขที่เอกสาร','เลขทีเอกสาร','เลขที่เอกสาร ','docno','doc_no','document','documentno','invoice','เลขที่บิล'],
+  docDate:['วันที่เอกสาร','วันที่','docdate','doc_date','date'],
+  custCode:['รหัสลูกค้า','custcode','cust_code','customercode','code'],
+  custName:['ชื่อลูกค้า','custname','cust_name','customername','customer','name'],
+  address:['ที่อยู่','address','addr'],
+  tambon:['ตำบล','แขวง','tambon','subdistrict'],
+  amphoe:['อำเภอ','เขต','amphoe','amphur','district'],
+  province:['จังหวัด','province','changwat']
+};
+function mapHeader(h){
+  const k=String(h||'').trim().toLowerCase().replace(/\s+/g,'');
+  for(const f in HEAD_MAP) if(HEAD_MAP[f].some(x=>x.toLowerCase().replace(/\s+/g,'')===k)) return f;
+  return null;
+}
+$('#drop').onclick = ()=>$('#fileInput').click();
+$('#drop').ondragover = e=>{ e.preventDefault(); $('#drop').classList.add('over'); };
+$('#drop').ondragleave = ()=>$('#drop').classList.remove('over');
+$('#drop').ondrop = e=>{ e.preventDefault(); $('#drop').classList.remove('over');
+  if(e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); };
+$('#fileInput').onchange = e=>{ if(e.target.files[0]) readFile(e.target.files[0]); e.target.value=''; };
+
+function readFile(file){
+  const isCsv = /\.csv$/i.test(file.name);
+  const rd = new FileReader();
+  rd.onload = ev => {
+    let rows;
+    try{
+      if(isCsv && !window.XLSX) rows = parseCSV(ev.target.result);
+      else if(window.XLSX){
+        const wb = XLSX.read(ev.target.result, {type: isCsv?'string':'array', cellDates:true});
+        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true, defval:''});
+      } else {
+        $('#importMsg').innerHTML='<div class="notice bad">ไม่สามารถโหลดตัวอ่านไฟล์ Excel ได้ (ต้องต่ออินเทอร์เน็ต) — กรุณาบันทึกไฟล์เป็น .csv แล้วนำเข้าใหม่</div>';
+        return;
+      }
+      buildPreview(rows, file.name);
+    }catch(err){
+      $('#importMsg').innerHTML='<div class="notice bad">อ่านไฟล์ไม่สำเร็จ: '+esc(err.message)+'</div>';
+    }
+  };
+  if(isCsv && !window.XLSX) rd.readAsText(file,'utf-8');
+  else if(isCsv) rd.readAsText(file,'utf-8');
+  else rd.readAsArrayBuffer(file);
+}
+function parseCSV(text){
+  const out=[]; let row=[], cell='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(cell); cell=''; }
+    else if(c==='\n'){ row.push(cell); out.push(row); row=[]; cell=''; }
+    else if(c!=='\r') cell+=c;
+  }
+  if(cell||row.length){ row.push(cell); out.push(row); }
+  return out.filter(r=>r.some(c=>String(c).trim()!==''));
+}
+let pendingRows = null;
+function buildPreview(rows, fname){
+  rows = (rows||[]).filter(r=>r && r.some(c=>String(c).trim()!==''));
+  if(rows.length<2){ $('#importMsg').innerHTML='<div class="notice bad">ไฟล์ไม่มีข้อมูล</div>'; return; }
+  let hi = 0;
+  for(let i=0;i<Math.min(rows.length,10);i++){ if(rows[i].some(c=>mapHeader(c)==='docNo')){ hi=i; break; } }
+  const head = rows[hi].map(mapHeader);
+  if(head.indexOf('docNo')<0){
+    $('#importMsg').innerHTML='<div class="notice bad">ไม่พบคอลัมน์ <b>เลขที่เอกสาร</b> ในไฟล์ — หัวคอลัมน์ที่พบ: '+
+      esc(rows[hi].join(', '))+'</div>'; return;
+  }
+  const recs=[];
+  for(let i=hi+1;i<rows.length;i++){
+    const r=rows[i]; const o={};
+    head.forEach((f,j)=>{ if(f) o[f]=r[j]; });
+    if(!o.docNo || String(o.docNo).trim()==='') continue;
+    const address = String(o.address||'').trim();
+    const a = parseAddr(address);
+    recs.push({row:Number(o.row)||recs.length+1, docNo:String(o.docNo).trim(), docDate:normDate(o.docDate),
+      custCode:String(o.custCode||'').trim(), custName:String(o.custName||'').trim(), address:address,
+      tambon:String(o.tambon||a.tambon||'').trim(), amphoe:String(o.amphoe||a.amphoe||'').trim(),
+      province:String(o.province||a.province||'').trim(), status:'ยังไม่จัด', vehicleId:'', updatedAt:'', updatedBy:'', log:[], source:'Excel: '+fname});
+  }
+  if(!recs.length){ $('#importMsg').innerHTML='<div class="notice bad">ไม่พบแถวข้อมูลที่มีเลขที่เอกสาร</div>'; return; }
+  pendingRows = recs;
+  const dup = recs.filter(r=>DB.docs.some(d=>d.docNo===r.docNo)).length;
+  const noProv = recs.filter(r=>!r.province).length;
+  $('#importMsg').innerHTML = '<div class="notice ok">อ่านไฟล์ <b>'+esc(fname)+'</b> สำเร็จ พบ <b>'+recs.length+'</b> รายการ'+
+    (dup? ' • ซ้ำกับในระบบ '+dup+' รายการ (จะถูกอัปเดตทับ)':'')+
+    (noProv? ' • แยกจังหวัดไม่ได้ '+noProv+' รายการ (แก้ไขภายหลังได้)':'')+'</div>';
+  $('#importPreview').innerHTML = '<div class="panel flush"><div class="panel-title"><h3>ตัวอย่างข้อมูล 15 แถวแรก</h3>'+
+    '<div class="head-actions"><button class="outline sm" id="impCancel">ยกเลิก</button>'+
+    '<button class="primary sm" id="impOk">นำเข้า '+recs.length+' รายการ</button></div></div><div class="tbl-wrap">'+
+    table(['แถว','เลขที่เอกสาร','วันที่เอกสาร','รหัสลูกค้า','ชื่อลูกค้า','ที่อยู่','ตำบล','อำเภอ','จังหวัด'],
+      recs.slice(0,15).map(r=>[esc(r.row),'<b>'+esc(r.docNo)+'</b>',thDate(r.docDate),esc(r.custCode),esc(r.custName),
+        '<span class="subtle">'+esc(r.address)+'</span>',esc(r.tambon||'-'),esc(r.amphoe||'-'),esc(r.province||'-')]))+'</div></div>';
+  $('#impCancel').onclick = ()=>{ pendingRows=null; $('#importPreview').innerHTML=''; $('#importMsg').innerHTML=''; };
+  $('#impOk').onclick = ()=>commitImport();
+}
+function commitImport(){
+  if(!pendingRows) return;
+  let added=0, updated=0;
+  pendingRows.forEach(r=>{
+    const ex = DB.docs.find(d=>d.docNo===r.docNo);
+    if(ex){ Object.assign(ex,{docDate:r.docDate,custCode:r.custCode,custName:r.custName,address:r.address,
+      tambon:r.tambon,amphoe:r.amphoe,province:r.province,row:r.row,source:r.source}); updated++; }
+    else { DB.docs.push(r); added++; }
+  });
+  save(); pendingRows=null;
+  $('#importPreview').innerHTML='';
+  $('#importMsg').innerHTML='<div class="notice ok">นำเข้าสำเร็จ — เพิ่มใหม่ <b>'+added+'</b> รายการ, อัปเดต <b>'+updated+'</b> รายการ</div>';
+  renderDocTable();
+}
+
+/* --- SQL Server --- */
+function loadSqlForm(){
+  const s=DB.sql||{};
+  $('#sqlServer').value=s.server||''; $('#sqlPort').value=s.port||'1433'; $('#sqlDb').value=s.db||'';
+  $('#sqlUser').value=s.user||''; $('#sqlPass').value=s.savePass?(s.pass||''):''; $('#sqlView').value=s.view||'';
+  $('#sqlApi').value=s.api||'/api/sqlserver'; $('#sqlSavePass').checked=!!s.savePass;
+}
+function sqlPayload(action){
+  return {action:action, server:$('#sqlServer').value.trim(), port:$('#sqlPort').value.trim()||'1433',
+    database:$('#sqlDb').value.trim(), user:$('#sqlUser').value.trim(), password:$('#sqlPass').value,
+    view:$('#sqlView').value.trim()};
+}
+$('#btnSqlSave').onclick = () => {
+  DB.sql = {server:$('#sqlServer').value.trim(), port:$('#sqlPort').value.trim(), db:$('#sqlDb').value.trim(),
+    user:$('#sqlUser').value.trim(), pass:$('#sqlSavePass').checked?$('#sqlPass').value:'', view:$('#sqlView').value.trim(),
+    api:$('#sqlApi').value.trim()||'/api/sqlserver', savePass:$('#sqlSavePass').checked};
+  save(); sqlMsg('ok','บันทึกค่าการเชื่อมต่อแล้ว');
+};
+function sqlMsg(kind,msg){ $('#sqlMsg').innerHTML='<div class="notice '+(kind==='ok'?'ok':kind==='bad'?'bad':'warn')+'">'+msg+'</div>'; }
+async function sqlCall(action){
+  const api=$('#sqlApi').value.trim()||'/api/sqlserver';
+  const p=sqlPayload(action);
+  if(!p.server||!p.database){ sqlMsg('bad','กรุณากรอก Server และ Database'); return null; }
+  if(action==='pull' && !p.view){ sqlMsg('bad','กรุณาระบุ View / Table ที่ใช้ดึงข้อมูล'); return null; }
+  sqlMsg('warn','กำลังเชื่อมต่อ '+esc(p.server)+' ...');
+  try{
+    const res = await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+    const ct = res.headers.get('content-type')||'';
+    if(!ct.includes('json')){
+      sqlMsg('bad','ไม่พบ API ที่ <span class="mono">'+esc(api)+'</span> (ตอบกลับไม่ใช่ JSON)<br>'+
+        'ต้อง deploy ไฟล์ <span class="mono">api/sqlserver.js</span> ตามตัวอย่างขึ้น Vercel ก่อน'); return null;
+    }
+    const data = await res.json();
+    if(!res.ok || data.ok===false){ sqlMsg('bad','เชื่อมต่อไม่สำเร็จ: '+esc(data.error||('HTTP '+res.status))); return null; }
+    return data;
+  }catch(err){
+    sqlMsg('bad','เรียก API ไม่สำเร็จ: '+esc(err.message)+'<br>ตรวจสอบว่า deploy serverless function แล้ว และ URL ถูกต้อง');
+    return null;
+  }
+}
+$('#btnSqlTest').onclick = async () => { const d=await sqlCall('test'); if(d) sqlMsg('ok','เชื่อมต่อ SQL Server สำเร็จ'); };
+$('#btnSqlPull').onclick = async () => {
+  const d = await sqlCall('pull'); if(!d) return;
+  const rows = d.rows||[];
+  if(!rows.length){ sqlMsg('warn','เชื่อมต่อสำเร็จ แต่ไม่พบข้อมูลใน view'); return; }
+  const head = Object.keys(rows[0]);
+  const arr = [head].concat(rows.map(r=>head.map(h=>r[h])));
+  buildPreview(arr, 'SQL Server: '+$('#sqlView').value.trim());
+  sqlMsg('ok','ดึงข้อมูล '+rows.length+' แถว — ตรวจสอบตัวอย่างที่แท็บ "นำเข้าจาก Excel" แล้วกดนำเข้า');
+  $$('#docTabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab==='excel'));
+  $$('#v-docs .tabpage').forEach(p=>p.classList.toggle('on', p.id==='tab-excel'));
+};
+
+/* ============================================================
+   VEHICLES
+   ============================================================ */
+function renderVehicles(){
+  const today=todayISO();
+  const cnt = s => DB.vehicles.filter(v=>vehicleStatusOn(v.id,today).status===s).length;
+  $('#vehStats').innerHTML = [['รถทั้งหมด',DB.vehicles.length,'blue'],['ว่าง',cnt('ว่าง'),'green'],
+    ['จองแล้ว',cnt('จองแล้ว'),'yellow'],['เดินทางอยู่',cnt('เดินทางอยู่'),'orange']]
+    .map(s=>'<div class="stat '+s[2]+'"><span class="label">'+s[0]+'</span><strong>'+s[1]+'</strong><small>สถานะวันนี้</small></div>').join('');
+  $('#vehCount').textContent = DB.vehicles.length+' คัน';
+  $('#vehTable').innerHTML = DB.vehicles.length ? table(
+    ['รหัสรถ','ยี่ห้อ / รุ่น','ทะเบียน','คนขับ','เบอร์โทร','ประเภท','น้ำหนักบรรทุก','หมายเหตุ','สถานะวันนี้',''],
+    DB.vehicles.map(v=>{
+      const st=vehicleStatusOn(v.id,today);
+      return ['<b>'+esc(v.id)+'</b>', esc(v.brand)+' '+esc(v.model||''), esc(v.plate), esc(v.driver), esc(v.phone||'-'),
+        esc(v.type||'-'), esc(v.capacity||'-'), '<span class="subtle">'+esc(v.note||'-')+'</span>',
+        '<span class="badge '+vstatusClass(st.status)+'">'+esc(st.status)+'</span>'+
+          (st.booking?'<br><span class="subtle">'+esc(st.booking.depart)+'-'+esc(st.booking.back)+' → '+esc(st.booking.province)+'</span>':'')+
+          (v.active===false?'<br><span class="badge b-off">ระงับใช้งาน</span>':''),
+        '<button class="link" data-editveh="'+esc(v.id)+'">แก้ไข</button>'+
+        '<button class="link" style="color:var(--red)" data-delveh="'+esc(v.id)+'">ลบ</button>'];
+    })) : '<div class="empty-state">ยังไม่มีข้อมูลรถ</div>';
+  $$('#vehTable [data-editveh]').forEach(b=>b.onclick=()=>vehForm(vehicle(b.dataset.editveh)));
+  $$('#vehTable [data-delveh]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.delveh;
+    const used = DB.docs.filter(d=>d.vehicleId===id).length + DB.bookings.filter(x=>x.vehicleId===id).length;
+    if(!confirm('ลบรถ '+id+' ?'+(used?'\n\nมีข้อมูลอ้างอิงอยู่ '+used+' รายการ (จะถูกล้างการผูกรถ)':''))) return;
+    DB.vehicles=DB.vehicles.filter(v=>v.id!==id);
+    DB.docs.forEach(d=>{ if(d.vehicleId===id) d.vehicleId=''; });
+    DB.bookings=DB.bookings.filter(x=>x.vehicleId!==id);
+    save(); renderVehicles();
+  });
+}
+$('#btnAddVehicle').onclick = ()=>vehForm(null);
+function vehForm(v){
+  const e = v || {id:'',brand:'',model:'',plate:'',driver:'',phone:'',type:'รถบรรทุก 6 ล้อ',capacity:'',note:'',active:true};
+  openModal('<h3>'+(v?'แก้ไขข้อมูลรถ':'เพิ่มรถ')+'</h3>'+
+    '<div class="row2"><div class="field"><label>รหัสรถ *</label><input id="vfId" value="'+esc(e.id)+'" placeholder="เช่น KB-04"'+(v?' readonly':'')+'></div>'+
+    '<div class="field"><label>ทะเบียนรถ *</label><input id="vfPlate" value="'+esc(e.plate)+'" placeholder="เช่น 4ขก 7788"></div></div>'+
+    '<div class="row2"><div class="field"><label>ยี่ห้อ</label><input id="vfBrand" value="'+esc(e.brand)+'" placeholder="เช่น Isuzu"></div>'+
+    '<div class="field"><label>รุ่น</label><input id="vfModel" value="'+esc(e.model||'')+'"></div></div>'+
+    '<div class="row2"><div class="field"><label>ชื่อคนขับ</label><input id="vfDriver" value="'+esc(e.driver)+'"></div>'+
+    '<div class="field"><label>เบอร์โทรคนขับ</label><input id="vfPhone" value="'+esc(e.phone||'')+'"></div></div>'+
+    '<div class="row2"><div class="field"><label>ประเภทรถ</label><input id="vfType" value="'+esc(e.type||'')+'" placeholder="รถบรรทุก 6 ล้อ / กระบะ"></div>'+
+    '<div class="field"><label>น้ำหนักบรรทุก</label><input id="vfCap" value="'+esc(e.capacity||'')+'" placeholder="เช่น 5 ตัน"></div></div>'+
+    '<div class="field"><label>ข้อมูลสำคัญอื่นๆ / หมายเหตุ</label><textarea id="vfNote" rows="2">'+esc(e.note||'')+'</textarea></div>'+
+    '<div class="chk"><input type="checkbox" id="vfActive"'+(e.active!==false?' checked':'')+'><label for="vfActive" style="margin:0">เปิดใช้งานรถคันนี้</label></div>'+
+    '<div class="modal-actions"><button class="outline" onclick="closeModal()">ยกเลิก</button><button class="primary" id="vfSave">บันทึก</button></div>');
+  $('#vfSave').onclick = () => {
+    const id=$('#vfId').value.trim();
+    if(!id){ alert('กรุณาระบุรหัสรถ'); return; }
+    if(!v && DB.vehicles.some(x=>x.id===id)){ alert('มีรหัสรถนี้อยู่แล้ว'); return; }
+    const rec={id:id, brand:$('#vfBrand').value.trim(), model:$('#vfModel').value.trim(), plate:$('#vfPlate').value.trim(),
+      driver:$('#vfDriver').value.trim(), phone:$('#vfPhone').value.trim(), type:$('#vfType').value.trim(),
+      capacity:$('#vfCap').value.trim(), note:$('#vfNote').value.trim(), active:$('#vfActive').checked};
+    if(v) Object.assign(v,rec); else DB.vehicles.push(rec);
+    save(); closeModal(); renderVehicles();
+  };
+}
+
+/* ============================================================
+   REPORTS
+   ============================================================ */
+$('#repFrom').onchange = renderReports; $('#repTo').onchange = renderReports;
+function repList(){
+  const a=$('#repFrom').value||todayISO(), b=$('#repTo').value||a;
+  const lo=a<b?a:b, hi=a<b?b:a;
+  return {lo:lo, hi:hi, list:DB.docs.filter(d=>d.docDate>=lo && d.docDate<=hi)};
+}
+function renderReports(){
+  const r=repList(), list=r.list;
+  const c = s => list.filter(d=>d.status===s).length;
+  const done=c('ถึงมือลูกค้าแล้ว');
+  $('#repStats').innerHTML = [
+    ['เอกสารทั้งหมด',list.length,'blue',(r.lo===r.hi? thDate(r.lo) : thDate(r.lo)+' - '+thDate(r.hi))],
+    ['จัดเสร็จแล้ว',c('จัดเสร็จแล้ว'),'yellow','รอขึ้นรถ'],
+    ['ส่งแล้ว',c('ส่งแล้ว'),'orange','อยู่ระหว่างจัดส่ง'],
+    ['ถึงมือลูกค้าแล้ว',done,'green',(list.length?Math.round(done/list.length*100):0)+'% ของทั้งหมด']
+  ].map(s=>'<div class="stat '+s[2]+'"><span class="label">'+s[0]+'</span><strong>'+s[1]+'</strong><small>'+esc(s[3])+'</small></div>').join('');
+
+  const byProv={};
+  list.forEach(d=>{ const p=d.province||'ไม่ระบุจังหวัด'; byProv[p]=byProv[p]||{n:0,done:0,sent:0};
+    byProv[p].n++; if(d.status==='ถึงมือลูกค้าแล้ว')byProv[p].done++; if(d.status==='ส่งแล้ว')byProv[p].sent++; });
+  const provRows = Object.keys(byProv).sort((a,b)=>byProv[b].n-byProv[a].n);
+  $('#repProv').innerHTML = provRows.length ? table(['จังหวัด','เอกสาร','กำลังส่ง','ถึงลูกค้าแล้ว','สำเร็จ'],
+    provRows.map(p=>{const g=byProv[p];return [esc(p),g.n,g.sent,g.done,
+      '<span class="badge '+(g.done===g.n?'b-done':g.done?'b-sent':'b-none')+'">'+Math.round(g.done/g.n*100)+'%</span>'];}))
+    : '<div class="empty-state">ไม่มีข้อมูล</div>';
+
+  const byVeh={};
+  list.forEach(d=>{ const v=d.vehicleId||'ยังไม่ระบุรถ'; byVeh[v]=byVeh[v]||{n:0,done:0};
+    byVeh[v].n++; if(d.status==='ถึงมือลูกค้าแล้ว')byVeh[v].done++; });
+  const vehRows=Object.keys(byVeh).sort((a,b)=>byVeh[b].n-byVeh[a].n);
+  $('#repVeh').innerHTML = vehRows.length ? table(['รถ','คนขับ','เอกสาร','ถึงลูกค้าแล้ว'],
+    vehRows.map(v=>{const g=byVeh[v], veh=vehicle(v);
+      return ['<b>'+esc(v)+'</b>'+(veh?'<br><span class="subtle">'+esc(veh.plate)+'</span>':''),
+        esc(veh?veh.driver:'-'), g.n, g.done];}))
+    : '<div class="empty-state">ไม่มีข้อมูล</div>';
+
+  $('#repCount').textContent = list.length+' รายการ';
+  $('#repTable').innerHTML = list.length ? table(
+    ['เลขที่เอกสาร','วันที่','ลูกค้า','ตำบล','อำเภอ','จังหวัด','รถ','คนขับ','สถานะ','อัปเดตล่าสุด'],
+    list.map(d=>{const v=vehicle(d.vehicleId);
+      return ['<b>'+esc(d.docNo)+'</b>',thDate(d.docDate),esc(d.custName),esc(d.tambon||'-'),esc(d.amphoe||'-'),
+        esc(d.province||'-'),esc(d.vehicleId||'-'),esc(v?v.driver:'-'),
+        '<span class="badge '+statusClass(d.status)+'">'+esc(d.status)+'</span>','<span class="subtle">'+esc(d.updatedAt||'-')+'</span>'];}))
+    : '<div class="empty-state">ไม่มีเอกสารในช่วงวันที่เลือก</div>';
+}
+$('#btnRepCsv').onclick = () => {
+  const r=repList();
+  download('KanBarcode-report-'+r.lo+'_'+r.hi+'.csv',
+    toCSV(['เลขที่เอกสาร','วันที่เอกสาร','รหัสลูกค้า','ชื่อลูกค้า','ที่อยู่','ตำบล','อำเภอ','จังหวัด','รถ','คนขับ','สถานะ','อัปเดตล่าสุด'],
+      r.list.map(d=>{const v=vehicle(d.vehicleId);
+        return [d.docNo,d.docDate,d.custCode,d.custName,d.address,d.tambon,d.amphoe,d.province,d.vehicleId,v?v.driver:'',d.status,d.updatedAt];})));
+};
+$('#btnRepPrint').onclick = () => window.print();
+
+/* ============================================================
+   USERS / PERMISSIONS
+   ============================================================ */
+function renderUsers(){
+  const admin = isAdmin();
+  $('#userNotice').innerHTML = admin
+    ? 'คุณเข้าใช้งานในระดับ <b>ผู้ดูแลระบบ</b> — แก้ไขสิทธิ์ เพิ่ม/ลบผู้ใช้ และเปลี่ยนรหัสผ่านได้'
+    : 'คุณเข้าใช้งานในระดับผู้ใช้ทั่วไป — <b>ดูได้อย่างเดียว</b> เฉพาะ admin เท่านั้นที่แก้ไขสิทธิ์ได้';
+  $('#userNotice').className = 'notice'+(admin?'':' warn');
+  $('#btnAddUser').classList.toggle('hidden', !admin);
+  $('#userCount').textContent = DB.users.length+' บัญชี';
+  $('#userTable').innerHTML = table(
+    ['ชื่อผู้ใช้','ชื่อ-นามสกุล','ระดับสิทธิ์','เมนูที่เข้าถึงได้','สถานะ',''],
+    DB.users.map(u=>{
+      const perms = u.role==='admin' ? 'ทุกเมนู (ผู้ดูแลระบบ)' :
+        MENUS.filter(m=>u.perms&&u.perms[m[0]]).map(m=>'<span class="tag">'+m[1]+'</span>').join('')||'<span class="subtle">ไม่มีสิทธิ์</span>';
+      return ['<b>'+esc(u.username)+'</b>', esc(u.name),
+        '<span class="badge '+(u.role==='admin'?'b-book':'b-free')+'">'+(u.role==='admin'?'ผู้ดูแลระบบ':'ผู้ใช้ทั่วไป')+'</span>',
+        perms, '<span class="badge '+(u.active?'b-done':'b-off')+'">'+(u.active?'ใช้งาน':'ระงับ')+'</span>',
+        admin ? '<button class="link" data-edituser="'+esc(u.username)+'">แก้ไข</button>'+
+          (u.username===USER.username?'':'<button class="link" style="color:var(--red)" data-deluser="'+esc(u.username)+'">ลบ</button>') : '<span class="subtle">-</span>'];
+    }));
+  $$('#userTable [data-edituser]').forEach(b=>b.onclick=()=>userForm(DB.users.find(u=>u.username===b.dataset.edituser)));
+  $$('#userTable [data-deluser]').forEach(b=>b.onclick=()=>{
+    const u=b.dataset.deluser;
+    const target=DB.users.find(x=>x.username===u);
+    if(target.role==='admin' && DB.users.filter(x=>x.role==='admin').length<=1){ alert('ต้องมีผู้ดูแลระบบอย่างน้อย 1 บัญชี'); return; }
+    if(!confirm('ลบผู้ใช้ '+u+' ?')) return;
+    DB.users=DB.users.filter(x=>x.username!==u); save(); renderUsers();
+  });
+}
+$('#btnAddUser').onclick = ()=>userForm(null);
+function userForm(u){
+  if(!isAdmin()){ alert('เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขได้'); return; }
+  const e = u || {username:'',password:'',name:'',role:'user',active:true,perms:{dashboard:true,scan:true}};
+  openModal('<h3>'+(u?'แก้ไขผู้ใช้งาน':'เพิ่มผู้ใช้งาน')+'</h3>'+
+    '<div class="row2"><div class="field"><label>ชื่อผู้ใช้ *</label><input id="ufUser" value="'+esc(e.username)+'"'+(u?' readonly':'')+'></div>'+
+    '<div class="field"><label>รหัสผ่าน *</label><input id="ufPass" value="'+esc(e.password)+'"><div class="hint">รหัสแบบ Fixed สำหรับ login</div></div></div>'+
+    '<div class="row2"><div class="field"><label>ชื่อ-นามสกุล</label><input id="ufName" value="'+esc(e.name)+'"></div>'+
+    '<div class="field"><label>ระดับสิทธิ์</label><select id="ufRole">'+
+      '<option value="user"'+(e.role==='user'?' selected':'')+'>ผู้ใช้ทั่วไป</option>'+
+      '<option value="admin"'+(e.role==='admin'?' selected':'')+'>ผู้ดูแลระบบ (admin)</option></select></div></div>'+
+    '<div class="field"><label>เมนูที่อนุญาตให้ใช้งาน</label><div id="ufPerms" style="border:1px solid var(--line);border-radius:9px;padding:8px 12px">'+
+      MENUS.map(m=>'<div class="chk"><input type="checkbox" id="pm-'+m[0]+'" data-perm="'+m[0]+'"'+((e.perms&&e.perms[m[0]])?' checked':'')+'>'+
+        '<label for="pm-'+m[0]+'" style="margin:0">'+m[1]+'</label></div>').join('')+
+      '</div><div class="hint">ผู้ดูแลระบบเข้าถึงได้ทุกเมนูโดยอัตโนมัติ</div></div>'+
+    '<div class="chk"><input type="checkbox" id="ufActive"'+(e.active?' checked':'')+'><label for="ufActive" style="margin:0">เปิดใช้งานบัญชีนี้</label></div>'+
+    '<div class="modal-actions"><button class="outline" onclick="closeModal()">ยกเลิก</button><button class="primary" id="ufSave">บันทึก</button></div>');
+  $('#ufSave').onclick = () => {
+    const un=$('#ufUser').value.trim(), pw=$('#ufPass').value;
+    if(!un||!pw){ alert('กรุณาระบุชื่อผู้ใช้และรหัสผ่าน'); return; }
+    if(!u && DB.users.some(x=>x.username.toLowerCase()===un.toLowerCase())){ alert('มีชื่อผู้ใช้นี้อยู่แล้ว'); return; }
+    const perms={}; $$('#ufPerms [data-perm]').forEach(c=>perms[c.dataset.perm]=c.checked);
+    const role=$('#ufRole').value;
+    if(u && u.role==='admin' && role!=='admin' && DB.users.filter(x=>x.role==='admin').length<=1){
+      alert('ต้องมีผู้ดูแลระบบอย่างน้อย 1 บัญชี'); return; }
+    const rec={username:un, password:pw, name:$('#ufName').value.trim()||un, role:role, active:$('#ufActive').checked, perms:perms};
+    if(u){ Object.assign(u,rec); if(USER.username===u.username){ USER=u; startApp(); } }
+    else DB.users.push(rec);
+    save(); closeModal(); renderUsers();
+  };
+}
+/* backup / restore */
+$('#btnBackup').onclick = () => download('KanBarcode-backup-'+todayISO()+'.json', JSON.stringify(DB,null,2), 'application/json');
+$('#btnRestore').onclick = () => { if(!isAdmin()){alert('เฉพาะผู้ดูแลระบบเท่านั้น');return;} $('#restoreInput').click(); };
+$('#restoreInput').onchange = e => {
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload = ev => {
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(!d.users||!d.docs) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
+      if(!confirm('กู้คืนข้อมูลจากไฟล์นี้? ข้อมูลปัจจุบันจะถูกแทนที่ทั้งหมด')) return;
+      DB=d; save(); alert('กู้คืนข้อมูลสำเร็จ'); location.reload();
+    }catch(err){ alert('กู้คืนไม่สำเร็จ: '+err.message); }
+  };
+  rd.readAsText(f,'utf-8'); e.target.value='';
+};
+$('#btnReset').onclick = () => {
+  if(!isAdmin()){ alert('เฉพาะผู้ดูแลระบบเท่านั้น'); return; }
+  if(!confirm('รีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้น (รวมผู้ใช้และรหัสผ่าน)?')) return;
+  localStorage.removeItem(KEY); location.reload();
+};
+
+/* ---------- boot ---------- */
+(function boot(){
+  const u = sessionStorage.getItem(KEY+'.user');
+  const found = u && DB.users.find(x=>x.username===u && x.active);
+  if(found){ USER=found; startApp(); } else setTimeout(()=>$('#liUser').focus(),100);
+})();
+</script>
+</body>
+</html>
