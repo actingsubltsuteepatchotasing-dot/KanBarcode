@@ -71,6 +71,13 @@ button{cursor:pointer;border-radius:9px;border:1px solid transparent;padding:9px
 .topbar{background:#fff;border-bottom:1px solid var(--line);padding:12px 26px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:20;gap:12px}
 .crumb{font-size:13px;color:var(--muted)}
 .userbox{display:flex;align-items:center;gap:10px;font-size:13px}
+.sync{display:none;align-items:center;gap:5px;font-size:12px;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.sync.on{display:inline-flex}
+.sync::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.sync.s-busy{color:var(--muted);background:#f0f3f8}
+.sync.s-ok{color:var(--green);background:#eafaf0}
+.sync.s-err{color:var(--red);background:#fdecec;cursor:pointer}
+.sync.s-off{color:var(--yellow);background:#fdf6e3}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex:none}
 .content{padding:24px 26px 60px;max-width:1400px;width:100%}
 .view{display:none}
@@ -250,7 +257,7 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
   <main class="main">
     <header class="topbar">
       <div class="crumb" id="crumb">ภาพรวม</div>
-      <div class="userbox"><button class="link" id="btnMyPass" type="button">เปลี่ยนรหัสผ่าน</button><span id="whoami">ผู้ดูแลระบบ</span><div class="avatar" id="whoavatar">A</div></div>
+      <div class="userbox"><span class="sync" id="syncState" title=""></span><button class="link" id="btnMyPass" type="button">เปลี่ยนรหัสผ่าน</button><span id="whoami">ผู้ดูแลระบบ</span><div class="avatar" id="whoavatar">A</div></div>
     </header>
     <div class="content">
 
@@ -676,7 +683,11 @@ function load(){
   try{ const raw=localStorage.getItem(KEY); if(raw){ const d=JSON.parse(raw); if(d&&d.docs) return d; } }catch(e){}
   const s=seed(); localStorage.setItem(KEY, JSON.stringify(s)); return s;
 }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){ alert('บันทึกข้อมูลไม่สำเร็จ: พื้นที่จัดเก็บเต็ม'); } }
+/* เขียนลง localStorage อย่างเดียว ไม่ยิงขึ้นคลาวด์ — ใช้ตอนเพิ่งดึงข้อมูลลงมา */
+function saveLocal(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){ alert('บันทึกข้อมูลไม่สำเร็จ: พื้นที่จัดเก็บเต็ม'); } }
+/* ทุกจุดที่แก้ข้อมูลเรียกตัวนี้ — เก็บลงเครื่องทันที แล้วค่อยทยอยส่งขึ้น Supabase
+   (ดูหัวข้อ CLOUD SYNC ด้านล่าง ตารางไหนถูกซิงก์แล้วบ้างดูที่ค่า CLOUD) */
+function save(){ saveLocal(); cloudSchedule(); }
 DB = load();
 
 /* ============================================================
@@ -743,6 +754,134 @@ function sideClient(){
   }});
 }
 
+/* ============================================================
+   CLOUD SYNC — เก็บข้อมูลไว้บน Supabase ให้ใช้ร่วมกันทุกเครื่อง
+   ------------------------------------------------------------
+   วิธีทำงาน
+     • ล็อกอินสำเร็จ → cloudPull() ดึงข้อมูลลงมาใส่ DB
+     • ทุกครั้งที่เรียก save() จะเทียบ DB กับ "ภาพถ่ายล่าสุด" (CLOUD_SNAP)
+       แล้วส่งเฉพาะแถวที่เปลี่ยนหรือถูกลบขึ้นไป ไม่ได้ยัดทั้งก้อนทุกครั้ง
+     • ส่งไม่สำเร็จ → ไม่ขยับ snapshot จึงส่งซ้ำให้เองใน save() ครั้งถัดไป
+       และมีป้ายสถานะมุมขวาบนให้กดลองใหม่ทันที
+     • localStorage ยังถูกเขียนอยู่ ทำหน้าที่เป็นสำเนาสำรองในเครื่อง
+
+   เพิ่มตารางทีละเมนูเพื่อให้ทดสอบได้ — โครงสร้างตารางดูที่
+   supabase/data-schema.sql
+   ============================================================ */
+const CLOUD = {
+  /* DB.vehicles ↔ ตาราง public.vehicles */
+  vehicles: {
+    table: 'vehicles',
+    pk: 'id',
+    key: v => v.id,
+    toRow: v => ({
+      id:v.id, brand:v.brand||null, model:v.model||null, plate:v.plate||null,
+      driver:v.driver||null, phone:v.phone||null, type:v.type||null,
+      capacity:v.capacity||null, note:v.note||null, active:v.active!==false
+    }),
+    fromRow: r => ({
+      id:r.id, brand:r.brand||'', model:r.model||'', plate:r.plate||'',
+      driver:r.driver||'', phone:r.phone||'', type:r.type||'',
+      capacity:r.capacity||'', note:r.note||'', active:r.active!==false
+    })
+  }
+};
+
+const MIG_KEY = KEY + '.migrated';
+let CLOUD_SNAP = {};    /* ชื่อชุดข้อมูล → { pk: json ของแถวที่ซิงก์ไปแล้ว } */
+let CLOUD_ON   = false; /* ดึงข้อมูลลงมาเรียบร้อยหรือยัง — กันไม่ให้ push ก่อน pull */
+let CLOUD_BUSY = false, CLOUD_TIMER = null, CLOUD_AGAIN = false;
+
+function migFlags(){ try{ return JSON.parse(localStorage.getItem(MIG_KEY)||'{}'); }catch(e){ return {}; } }
+function migMark(name){
+  const f = migFlags(); f[name] = true;
+  try{ localStorage.setItem(MIG_KEY, JSON.stringify(f)); }catch(e){}
+}
+
+/* ถ่ายภาพสถานะปัจจุบันของชุดข้อมูลหนึ่ง ไว้เทียบหาส่วนที่เปลี่ยน */
+function cloudSnap(name){
+  const c = CLOUD[name], out = {};
+  (DB[name]||[]).forEach(o => { out[c.key(o)] = JSON.stringify(c.toRow(o)); });
+  return out;
+}
+
+/* ---------- ป้ายบอกสถานะมุมขวาบน ---------- */
+function cloudBadge(kind, text, detail){
+  const el = $('#syncState'); if(!el) return;
+  el.className = 'sync on s-' + kind;
+  el.textContent = text;
+  el.title = detail || '';
+  el.onclick = (kind === 'err') ? (() => cloudRun()) : null;
+  if(kind === 'ok') setTimeout(() => { if(el.classList.contains('s-ok')) el.className = 'sync'; }, 2500);
+}
+
+/* ---------- ดึงข้อมูลลงมาตอนเข้าระบบ ---------- */
+async function cloudPull(){
+  if(!sb) return;
+  cloudBadge('busy', 'กำลังโหลดข้อมูล...');
+  const flags = migFlags();
+  for(const name in CLOUD){
+    const c = CLOUD[name];
+    const {data, error} = await sb.from(c.table).select('*');
+    if(error) throw error;
+    if(!data.length && !flags[name] && (DB[name]||[]).length){
+      /* คลาวด์ยังว่าง และเครื่องนี้ยังไม่เคยย้ายข้อมูล
+         → ปล่อยของเดิมในเครื่องไว้ แล้วให้ cloudRun ยกขึ้นไปให้ครั้งเดียว */
+      CLOUD_SNAP[name] = {};
+    }else{
+      DB[name] = data.map(c.fromRow);
+      CLOUD_SNAP[name] = cloudSnap(name);
+    }
+    migMark(name);
+  }
+  saveLocal();
+  CLOUD_ON = true;
+  cloudBadge('ok', 'ข้อมูลตรงกับคลาวด์');
+  cloudSchedule();   /* เผื่อมีของเดิมในเครื่องรออัปขึ้นไป */
+}
+
+/* ---------- ส่งเฉพาะส่วนที่เปลี่ยนขึ้นไป ---------- */
+/* หน่วง 400ms กันกรณีแก้รัว ๆ เช่นยิงบาร์โค้ดติดกันหลายใบ */
+function cloudSchedule(){
+  if(!CLOUD_ON) return;
+  clearTimeout(CLOUD_TIMER);
+  CLOUD_TIMER = setTimeout(cloudRun, 400);
+}
+
+async function cloudRun(){
+  if(!CLOUD_ON || !sb) return;
+  if(CLOUD_BUSY){ CLOUD_AGAIN = true; return; }   /* รอบก่อนยังไม่เสร็จ → ต่อคิวไว้ */
+  CLOUD_BUSY = true;
+  let sent = 0, failed = null;
+  try{
+    for(const name in CLOUD){
+      const c = CLOUD[name], snap = CLOUD_SNAP[name] || {}, cur = cloudSnap(name);
+      const up = [], del = [];
+      for(const k in cur)  if(cur[k] !== snap[k]) up.push(JSON.parse(cur[k]));
+      for(const k in snap) if(!(k in cur))        del.push(k);
+      if(!up.length && !del.length) continue;
+      cloudBadge('busy', 'กำลังบันทึก...');
+      if(up.length){
+        const {error} = await sb.from(c.table).upsert(up);
+        if(error) throw error;
+      }
+      if(del.length){
+        const {error} = await sb.from(c.table).delete().in(c.pk, del);
+        if(error) throw error;
+      }
+      CLOUD_SNAP[name] = cur;    /* สำเร็จแล้วค่อยขยับ snapshot */
+      sent += up.length + del.length;
+    }
+  }catch(err){ failed = err; }
+  CLOUD_BUSY = false;
+  if(failed){
+    cloudBadge('err', 'ยังไม่ได้บันทึกขึ้นคลาวด์', authMsg(failed) + ' — กดที่ป้ายนี้เพื่อลองใหม่');
+  }else if(sent){
+    cloudBadge('ok', 'บันทึกขึ้นคลาวด์แล้ว');
+  }
+  if(CLOUD_AGAIN){ CLOUD_AGAIN = false; cloudSchedule(); }
+}
+
 /* ---------- แปล error ของ Supabase เป็นภาษาไทย ---------- */
 function authMsg(err){
   const m = String((err && (err.message||err.error_description)) || err || '');
@@ -755,7 +894,13 @@ function authMsg(err){
   if(/Failed to fetch|NetworkError|ERR_NAME/i.test(m))     return 'เชื่อมต่อ Supabase ไม่ได้ — ตรวจสอบ Project URL และอินเทอร์เน็ต';
   if(/Invalid API key|JWSError|JWT/i.test(m)) return 'anon key ไม่ถูกต้อง — ตรวจสอบค่าที่หน้า Project Settings → API';
   if(/row-level security|permission denied/i.test(m))      return 'ไม่มีสิทธิ์ทำรายการนี้ (ถูกปฏิเสธโดย Row Level Security)';
-  if(/does not exist|schema cache/i.test(m))               return 'ยังไม่ได้สร้างตาราง profiles — รันไฟล์ supabase/schema.sql ใน SQL Editor ก่อน';
+  if(/does not exist|schema cache/i.test(m)){
+    /* ชื่อตารางที่หายไปอยู่ในข้อความ error — ชี้ให้ตรงว่าต้องรันไฟล์ไหน */
+    const t = (m.match(/'([a-z_]+)'|"([a-z_]+)"/) || [])[1] || '';
+    return t === 'profiles' || !t
+      ? 'ยังไม่ได้สร้างตาราง profiles — รันไฟล์ supabase/schema.sql ใน SQL Editor ก่อน'
+      : 'ยังไม่ได้สร้างตาราง ' + t + ' — รันไฟล์ supabase/data-schema.sql ใน SQL Editor ก่อน';
+  }
   return m || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
 }
 
@@ -794,7 +939,7 @@ async function useSession(session){
     throw new Error('บัญชีนี้ยังไม่ได้เปิดใช้งาน หรือถูกระงับ — ติดต่อผู้ดูแลระบบ');
   }
   USER = toUser(p, session.user.email);
-  startApp();
+  await startApp();
 }
 
 /* ---------- ฟอร์มเข้าสู่ระบบ ---------- */
@@ -875,6 +1020,9 @@ $('#btnLogout').onclick = async () => {
   if(!confirm('ออกจากระบบ?')) return;
   try{ if(sb) await sb.auth.signOut(); }catch(e){}
   USER = null;
+  /* ปิดการซิงก์และล้าง snapshot — คนถัดไปที่ล็อกอินจะได้ดึงของใหม่ ไม่ใช่ดันของเก่าขึ้นไป */
+  CLOUD_ON = false; CLOUD_SNAP = {}; clearTimeout(CLOUD_TIMER);
+  const sEl = $('#syncState'); if(sEl) sEl.className = 'sync';
   $('#app').classList.remove('on'); $('#loginView').classList.remove('hidden');
   authPane('login');
   $('#liUser').value = ''; $('#liPass').value = ''; $('#liErr').textContent = '';
@@ -915,7 +1063,7 @@ $('#btnMyPass').onclick = () => {
 function can(m){ return USER && (USER.role==='admin' || (USER.perms && USER.perms[m])); }
 function isAdmin(){ return USER && USER.role==='admin'; }
 
-function startApp(){
+async function startApp(){
   $('#loginView').classList.add('hidden');
   $('#app').classList.add('on');
   $('#whoami').textContent = USER.name + (USER.role==='admin'?' (admin)':'');
@@ -927,11 +1075,22 @@ function startApp(){
   calMonth = new Date(); calSel = d;
   loadSqlForm();
   go(first);
+  /* วาดหน้าจอจากสำเนาในเครื่องก่อน (ขึ้นเร็ว) แล้วค่อยดึงของจริงจาก Supabase มาทับ */
+  try{
+    await cloudPull();
+    go(CURVIEW);
+  }catch(err){
+    cloudBadge('off', 'ใช้ข้อมูลในเครื่อง',
+      'โหลดข้อมูลจาก Supabase ไม่สำเร็จ: ' + authMsg(err) +
+      ' — สิ่งที่แก้ตอนนี้จะยังไม่ถูกส่งขึ้นคลาวด์');
+  }
 }
 
 /* ---------- navigation ---------- */
+let CURVIEW = 'dashboard';
 function go(view){
   if(!can(view)) return;
+  CURVIEW = view;
   $$('.view').forEach(v=>v.classList.toggle('on', v.id==='v-'+view));
   $$('#nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
   const label = (MENUS.find(m=>m[0]===view)||['','']) [1];
@@ -1823,7 +1982,10 @@ $('#restoreInput').onchange = e => {
 };
 $('#btnReset').onclick = () => {
   if(!isAdmin()){ alert('เฉพาะผู้ดูแลระบบเท่านั้น'); return; }
-  if(!confirm('รีเซ็ตเอกสาร รถ และการจอง กลับเป็นค่าเริ่มต้น? (บัญชีผู้ใช้บน Supabase จะไม่ถูกแตะต้อง)')) return;
+  /* ล้างเฉพาะสำเนาในเครื่อง — ข้อมูลที่ย้ายขึ้น Supabase แล้ว (ดู CLOUD) จะถูกดึงกลับมาตอนโหลดใหม่
+     ถ้าต้องการลบของบนคลาวด์จริง ๆ ให้ลบจากในหน้าจอนั้น ๆ หรือที่ Supabase */
+  if(!confirm('รีเซ็ตข้อมูลที่เก็บในเครื่องนี้กลับเป็นค่าเริ่มต้น?\n\n' +
+              'ข้อมูลที่เก็บบน Supabase แล้ว (รถและคนขับ, บัญชีผู้ใช้) จะไม่ถูกแตะต้อง')) return;
   localStorage.removeItem(KEY); location.reload();
 };
 

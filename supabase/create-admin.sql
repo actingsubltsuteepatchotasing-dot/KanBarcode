@@ -25,10 +25,10 @@ declare
   -- ==========================================================
   --  แก้ตรงนี้
   -- ==========================================================
-  v_email    text := 'admin@kanbarcode.local';   -- อีเมลที่ใช้ล็อกอิน
-  v_password text := 'ChangeMe#2026';            -- รหัสผ่าน (อย่างน้อย 8 ตัว)
-  v_name     text := 'ผู้ดูแลระบบ';                -- ชื่อที่แสดงในเว็บ
-  v_role     text := 'admin';                    -- 'admin' หรือ 'user'
+  v_email    text := 'actingsubltsuteepatchotasing@gmail.com';  -- อีเมลที่ใช้ล็อกอิน
+  v_password text := '2026';                          -- รหัสผ่าน (อย่างน้อย 8 ตัว) ← เปลี่ยนเป็นของคุณ
+  v_name     text := 'ผู้ดูแลระบบ';                                -- ชื่อที่แสดงในเว็บ
+  v_role     text := 'admin';                                    -- 'admin' หรือ 'user' (ห้ามลบบรรทัดนี้)
   -- ==========================================================
 
   v_perms jsonb := '{"dashboard":true,"scan":true,"calendar":true,"map":true,
