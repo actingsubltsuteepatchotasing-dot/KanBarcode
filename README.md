@@ -4,8 +4,16 @@
 
 ## เปิดใช้งาน
 
-**แบบเร็วที่สุด** — ดับเบิลคลิกไฟล์ `index.html` ได้เลย ไม่ต้องติดตั้งอะไร
-(ใช้งานได้ทุกหน้าจอ ยกเว้นการเชื่อมต่อ SQL Server ที่ต้อง deploy ขึ้น Vercel ก่อน)
+ระบบ login ใช้ **Supabase** — ต้องตั้งค่าโปรเจกต์ Supabase ก่อนใช้งานครั้งแรก
+ดูขั้นตอนทั้งหมดที่ [Docs/SUPABASE-SETUP.md](Docs/SUPABASE-SETUP.md) (ประมาณ 10 นาที)
+
+**ทดสอบเครื่องตัวเอง** — ต้องเปิดผ่าน `http://` ไม่ใช่ `file://`
+
+```
+npx serve .
+```
+
+(การเชื่อมต่อ SQL Server ยังต้อง deploy ขึ้น Vercel ก่อนถึงจะใช้ได้)
 
 **บน Vercel**
 
@@ -15,24 +23,42 @@ vercel
 ```
 
 หรือ push ขึ้น GitHub แล้ว Import Project ใน Vercel — ระบบจะติดตั้ง `mssql`
-และ deploy `api/sqlserver.js` ให้อัตโนมัติ ไม่มี build step ฝั่งหน้าเว็บ
+และ deploy ฟังก์ชันใน `api/` ให้อัตโนมัติ ไม่มี build step ฝั่งหน้าเว็บ
 
-## เข้าสู่ระบบครั้งแรก
+จากนั้นตั้ง **Settings → Environment Variables** สองตัวนี้ แล้ว **Redeploy หนึ่งครั้ง**
 
-| ชื่อผู้ใช้ | รหัสผ่าน |
-|---|---|
-| `admin` | `admin888` |
+```
+NEXT_PUBLIC_SUPABASE_URL       = https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY  = eyJhbGciOi...
+```
 
-เปลี่ยนรหัสผ่านและเพิ่มผู้ใช้ได้ที่เมนู **สิทธิ์การใช้งาน** (เฉพาะ admin)
+> เว็บนี้ไม่มี build step ตัวแปร `NEXT_PUBLIC_*` จึงไม่ถูกฝังตอน build เหมือน Next.js
+> — `api/config.js` เป็นตัวอ่านค่าให้ตอน runtime แทน แต่ยังต้อง Redeploy หลังแก้ตัวแปรเหมือนกัน
+> เพราะ Vercel ผูก environment variables ไว้กับ deployment
+
+## เข้าสู่ระบบ
+
+ล็อกอินด้วย **อีเมล + รหัสผ่าน** ผ่าน Supabase Auth
+
+- บัญชี admin คนแรกสร้างที่ Supabase (ดู [Docs/SUPABASE-SETUP.md](Docs/SUPABASE-SETUP.md) ข้อ 4)
+- ผู้ใช้คนอื่นให้ admin เพิ่มที่เมนู **สิทธิ์ผู้ใช้งาน** — ระบบสุ่มรหัสผ่านชั่วคราวมาให้
+- ลืมรหัสผ่านกดลิงก์ที่หน้า login เพื่อรับลิงก์ตั้งรหัสผ่านใหม่ทางอีเมล
+- เปลี่ยนรหัสผ่านตัวเองได้ที่ปุ่ม **เปลี่ยนรหัสผ่าน** มุมขวาบน
+
+ไม่มีบัญชีเริ่มต้นแบบ fixed password อีกแล้ว — รหัสผ่านทั้งหมดถูก hash เก็บใน Supabase
 
 ## โครงสร้างไฟล์
 
 ```
-index.html          เว็บทั้งระบบ (HTML + CSS + JS ในไฟล์เดียว)
-api/sqlserver.js    Vercel Serverless Function เชื่อมต่อ SQL Server
-package.json        dependency ฝั่ง API (mssql)
-vercel.json         ตั้งค่า Vercel
-Docs/KanBarcode.txt ข้อกำหนดและบันทึกการพัฒนา
+index.html               เว็บทั้งระบบ (HTML + CSS + JS ในไฟล์เดียว)
+api/config.js            ส่งค่า Supabase จาก Environment Variables ให้หน้าเว็บ
+api/sqlserver.js         Vercel Serverless Function เชื่อมต่อ SQL Server
+supabase/schema.sql      ตาราง profiles + RLS + trigger (รันใน SQL Editor)
+Docs/SUPABASE-SETUP.md   ขั้นตอนตั้งค่า Supabase ตั้งแต่ต้นจนจบ
+Docs/KanBarcode.txt      ข้อกำหนดและบันทึกการพัฒนา
+package.json             dependency ฝั่ง API (mssql)
+.env.local.example       ตัวอย่าง Environment Variables (คัดลอกเป็น .env.local)
+vercel.json              ตั้งค่า Vercel
 ```
 
 ## หน้าจอในระบบ
@@ -45,7 +71,7 @@ Docs/KanBarcode.txt ข้อกำหนดและบันทึกการ
 - **เอกสาร** — รายการเอกสาร นำเข้าจาก Excel/CSV หรือดึงจาก View ของ SQL Server
 - **ข้อมูลรถ** — ยี่ห้อ ทะเบียน คนขับ และรายละเอียดอื่น
 - **รายงาน** — สรุปตามช่วงวันที่ ส่งออก CSV ได้
-- **สิทธิ์การใช้งาน** — จัดการผู้ใช้และสิทธิ์ (admin เท่านั้น)
+- **สิทธิ์ผู้ใช้งาน** — เพิ่ม/แก้ไข/ระงับผู้ใช้ กำหนดเมนูที่เข้าถึงได้ (admin เท่านั้น)
 
 ## นำเข้าจาก Excel
 
@@ -62,5 +88,20 @@ User, Password และชื่อ View → กด **ทดสอบการ�
 
 ## ข้อมูลถูกเก็บที่ไหน
 
-เก็บใน `localStorage` ของเบราว์เซอร์แต่ละเครื่อง — สำรอง/กู้คืนได้จากเมนูสิทธิ์การใช้งาน
-ถ้าต้องการให้หลายเครื่องเห็นข้อมูลชุดเดียวกัน ต้องเพิ่ม database กลางเพิ่มเติม
+| ข้อมูล | เก็บที่ | ใช้ร่วมกันทุกเครื่อง |
+|---|---|---|
+| บัญชี อีเมล รหัสผ่าน (hash) | Supabase Auth (`auth.users`) | ใช่ |
+| ชื่อ ระดับสิทธิ์ เมนู สถานะเปิด/ระงับ | Supabase (`public.profiles`) | ใช่ |
+| เอกสาร รถ การจอง ค่าตั้งต่าง ๆ | `localStorage` ของเบราว์เซอร์ | ไม่ |
+
+เอกสาร/รถ/การจอง ยังเป็นข้อมูลรายเครื่องอยู่ — สำรองและกู้คืนได้จากเมนูสิทธิ์ผู้ใช้งาน
+ถ้าต้องการให้ทุกเครื่องเห็นชุดเดียวกัน ขั้นถัดไปคือย้ายส่วนนี้ขึ้น Supabase เช่นกัน
+
+### ความปลอดภัยของ anon key
+
+หน้าเว็บใช้แค่ **Project URL + anon public key** ซึ่งเป็นคีย์สาธารณะที่ออกแบบมาให้ฝังในหน้าเว็บได้
+สิทธิ์จริงบังคับด้วย **Row Level Security** ที่ฝั่งฐานข้อมูล:
+
+- ผู้ใช้ทั่วไปอ่านได้เฉพาะแถวของตัวเอง และแก้ไขอะไรไม่ได้เลย (เลื่อนขั้นตัวเองเป็น admin ไม่ได้)
+- บัญชีที่สมัครเข้ามาเองจะถูกตั้งเป็น `active = false` เสมอ เข้าระบบไม่ได้จนกว่า admin จะอนุมัติ
+- **ห้าม** นำ `service_role` key มาใส่ในหน้าเว็บ เพราะคีย์นั้นข้าม RLS ได้ทั้งหมด

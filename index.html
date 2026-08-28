@@ -185,13 +185,46 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
     <div class="brand-mark">K</div>
     <h1>KanBarcode</h1>
     <p>ระบบบันทึกสถานะการส่งสินค้า<br>บริษัท เกาอาน จำกัด</p>
-    <form id="loginForm">
-      <div class="field"><label>ชื่อผู้ใช้งาน</label><input id="liUser" autocomplete="username" placeholder="ระบุชื่อผู้ใช้งาน"></div>
+
+    <!-- ---- ตั้งค่าการเชื่อมต่อ Supabase ---- -->
+    <div id="cfgPane" class="hidden">
+      <div class="notice warn" id="cfgNote">ยังไม่ได้เชื่อมต่อ Supabase — ถ้า deploy บน Vercel ให้ตั้ง <b>Environment Variables</b> แล้ว Redeploy<br>หรือกรอก <b>Project URL</b> กับ <b>anon public key</b> จาก Project Settings → API ไว้ใช้เฉพาะเครื่องนี้</div>
+      <div class="field"><label>Project URL</label><input id="cfgUrl" placeholder="https://xxxxxxxxxxxx.supabase.co" autocomplete="off" spellcheck="false"></div>
+      <div class="field"><label>anon public key</label><input id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." autocomplete="off" spellcheck="false"></div>
+      <div class="error" id="cfgErr"></div>
+      <button class="primary" style="width:100%" id="cfgSave" type="button">เชื่อมต่อ Supabase</button>
+      <p class="hint" style="margin-top:12px">anon key เป็นคีย์สาธารณะ ออกแบบมาให้ฝังในหน้าเว็บได้ — ความปลอดภัยจริงมาจาก Row Level Security ในฐานข้อมูล</p>
+    </div>
+
+    <!-- ---- เข้าสู่ระบบ ---- -->
+    <form id="loginForm" class="hidden">
+      <div class="field"><label>อีเมล</label><input id="liUser" type="email" autocomplete="username" placeholder="name@example.com"></div>
       <div class="field"><label>รหัสผ่าน</label><input id="liPass" type="password" autocomplete="current-password" placeholder="ระบุรหัสผ่าน"></div>
       <div class="error" id="liErr"></div>
-      <button class="primary" style="width:100%" type="submit">เข้าสู่ระบบ</button>
+      <button class="primary" style="width:100%" type="submit" id="liBtn">เข้าสู่ระบบ</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+        <button class="link" type="button" id="btnForgot">ลืมรหัสผ่าน?</button>
+        <button class="link" type="button" id="btnEditCfg">ตั้งค่าการเชื่อมต่อ</button>
+      </div>
     </form>
-    <p class="hint" style="margin-top:16px">ค่าเริ่มต้น: <b>admin / admin888</b> (แก้ไขได้ที่หน้าสิทธิ์ผู้ใช้งาน)</p>
+
+    <!-- ---- ขอลิงก์ตั้งรหัสผ่านใหม่ ---- -->
+    <form id="forgotForm" class="hidden">
+      <div class="notice">ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปที่อีเมลของคุณ</div>
+      <div class="field"><label>อีเมล</label><input id="fgMail" type="email" autocomplete="username" placeholder="name@example.com"></div>
+      <div class="error" id="fgErr"></div>
+      <button class="primary" style="width:100%" type="submit" id="fgBtn">ส่งลิงก์ตั้งรหัสผ่านใหม่</button>
+      <div style="margin-top:14px"><button class="link" type="button" id="btnBackLogin">← กลับไปหน้าเข้าสู่ระบบ</button></div>
+    </form>
+
+    <!-- ---- ตั้งรหัสผ่านใหม่ (เปิดมาจากลิงก์ในอีเมล) ---- -->
+    <form id="newPassForm" class="hidden">
+      <div class="notice">ตั้งรหัสผ่านใหม่สำหรับ <b id="npMail"></b></div>
+      <div class="field"><label>รหัสผ่านใหม่</label><input id="npPass" type="password" autocomplete="new-password" placeholder="อย่างน้อย 8 ตัวอักษร"></div>
+      <div class="field"><label>ยืนยันรหัสผ่านใหม่</label><input id="npPass2" type="password" autocomplete="new-password" placeholder="พิมพ์ซ้ำอีกครั้ง"></div>
+      <div class="error" id="npErr"></div>
+      <button class="primary" style="width:100%" type="submit" id="npBtn">บันทึกรหัสผ่านใหม่</button>
+    </form>
   </div>
 </section>
 
@@ -217,7 +250,7 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
   <main class="main">
     <header class="topbar">
       <div class="crumb" id="crumb">ภาพรวม</div>
-      <div class="userbox"><span id="whoami">ผู้ดูแลระบบ</span><div class="avatar" id="whoavatar">A</div></div>
+      <div class="userbox"><button class="link" id="btnMyPass" type="button">เปลี่ยนรหัสผ่าน</button><span id="whoami">ผู้ดูแลระบบ</span><div class="avatar" id="whoavatar">A</div></div>
     </header>
     <div class="content">
 
@@ -471,14 +504,14 @@ export default async function handler(req, res) {
           <div><div class="eyebrow">ACCESS CONTROL</div><h2>สิทธิ์การใช้งาน</h2></div>
           <button class="primary sm" id="btnAddUser">+ เพิ่มผู้ใช้งาน</button>
         </div>
-        <div class="notice" id="userNotice">เฉพาะผู้ใช้ระดับ <b>ผู้ดูแลระบบ (admin)</b> เท่านั้นที่แก้ไขสิทธิ์และรหัสผ่านได้</div>
+        <div class="notice" id="userNotice">กำลังตรวจสอบสิทธิ์...</div>
         <div class="panel flush">
           <div class="panel-title"><h3>ผู้ใช้งานในระบบ</h3><span class="subtle" id="userCount"></span></div>
           <div class="tbl-wrap" id="userTable"></div>
         </div>
         <div class="panel" style="margin-top:16px">
           <h3 style="margin-bottom:10px">ข้อมูลระบบ</h3>
-          <p class="subtle">ข้อมูลทั้งหมดถูกเก็บใน localStorage ของเบราว์เซอร์เครื่องนี้ สามารถสำรอง/กู้คืนได้</p>
+          <p class="subtle">บัญชีผู้ใช้และสิทธิ์เก็บบน <b>Supabase</b> (ใช้ร่วมกันทุกเครื่อง) — ส่วนเอกสาร รถ และการจอง ยังเก็บใน localStorage ของเบราว์เซอร์เครื่องนี้ สำรอง/กู้คืนได้จากปุ่มด้านล่าง</p>
           <div class="head-actions" style="margin-top:12px">
             <button class="outline sm" id="btnBackup">สำรองข้อมูล (.json)</button>
             <button class="outline sm" id="btnRestore">กู้คืนข้อมูล</button>
@@ -495,6 +528,7 @@ export default async function handler(req, res) {
 <!-- ==================== MODALS ==================== -->
 <div class="modal" id="modal"><div class="modal-box" id="modalBox"></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 "use strict";
 /* ============================================================
@@ -636,37 +670,248 @@ function seed(){
     {id:uid('BK'),vehicleId:'KB-03',date:d0,province:'ราชบุรี',depart:'09:00',back:'17:00',status:'จองแล้ว',note:'รอจัดของ'},
     {id:uid('BK'),vehicleId:'KB-01',date:d1,province:'นครราชสีมา',depart:'06:00',back:'18:00',status:'จองแล้ว',note:'เที่ยวไกล'}
   ];
-  const allPerm = {}; MENUS.forEach(m=>allPerm[m[0]]=true);
-  const staffPerm = {}; MENUS.forEach(m=>staffPerm[m[0]] = (m[0]!=='users'));
-  const users = [
-    {username:'admin', password:'admin888', name:'ผู้ดูแลระบบ', role:'admin', active:true, perms:allPerm},
-    {username:'dispatch', password:'1234', name:'เจ้าหน้าที่จัดส่ง', role:'user', active:true, perms:staffPerm}
-  ];
-  return {vehicles, docs, bookings, users, sql:{server:'',port:'1433',db:'',user:'',pass:'',view:'',api:'/api/sqlserver',savePass:false}, mapKey:''};
+  return {vehicles, docs, bookings, sql:{server:'',port:'1433',db:'',user:'',pass:'',view:'',api:'/api/sqlserver',savePass:false}, mapKey:''};
 }
 function load(){
-  try{ const raw=localStorage.getItem(KEY); if(raw){ const d=JSON.parse(raw); if(d&&d.users&&d.users.length) return d; } }catch(e){}
+  try{ const raw=localStorage.getItem(KEY); if(raw){ const d=JSON.parse(raw); if(d&&d.docs) return d; } }catch(e){}
   const s=seed(); localStorage.setItem(KEY, JSON.stringify(s)); return s;
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){ alert('บันทึกข้อมูลไม่สำเร็จ: พื้นที่จัดเก็บเต็ม'); } }
 DB = load();
 
-/* ---------- auth ---------- */
-$('#loginForm').onsubmit = e => {
-  e.preventDefault();
-  const u=$('#liUser').value.trim(), p=$('#liPass').value;
-  const found = DB.users.find(x=>x.username.toLowerCase()===u.toLowerCase() && x.password===p);
-  if(!found){ $('#liErr').textContent='ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'; return; }
-  if(!found.active){ $('#liErr').textContent='บัญชีนี้ถูกระงับการใช้งาน'; return; }
-  USER=found; $('#liErr').textContent=''; $('#liPass').value='';
-  sessionStorage.setItem(KEY+'.user', found.username);
+/* ============================================================
+   AUTH — Supabase (Project URL + anon public key)
+   • บัญชี/รหัสผ่าน   : Supabase Auth (auth.users)
+   • ชื่อ/สิทธิ์/สถานะ : ตาราง public.profiles ที่ป้องกันด้วย Row Level Security
+   • สร้างบัญชีใหม่    : เฉพาะ admin (เมนู "สิทธิ์ผู้ใช้งาน")
+   ดูวิธีตั้งค่าที่ Docs/SUPABASE-SETUP.md และ supabase/schema.sql
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   ค่าเชื่อมต่อ Supabase — ไล่ลำดับความสำคัญดังนี้
+     1) ค่าคงที่สองตัวข้างล่างนี้ (ฝังมากับโค้ดตรง ๆ)
+     2) Environment Variables ของ Vercel อ่านผ่าน GET /api/config
+          NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY
+          (รองรับชื่อ SUPABASE_* และ VITE_SUPABASE_* ด้วย)
+     3) ค่าที่ผู้ใช้กรอกเองที่หน้า login แล้วเก็บใน localStorage ของเครื่องนั้น
+   เว็บนี้ไม่มี build step ตัวแปร NEXT_PUBLIC_* จึงไม่ถูกฝังตอน build
+   แบบ Next.js — ต้องอ่านตอน runtime ผ่าน serverless function เท่านั้น
+   ------------------------------------------------------------ */
+const SUPABASE_URL = '';
+const SUPABASE_ANON_KEY = '';
+const CONFIG_API = '/api/config';
+
+const CFG_KEY  = KEY + '.supabase';
+const AUTH_KEY = KEY + '.auth';
+let sb = null, SBCFG = null, RECOVERY = false, CFG_SERVER_ERR = '';
+
+function localCfg(){
+  try{
+    const c = JSON.parse(localStorage.getItem(CFG_KEY)||'null');
+    if(c && c.url && c.key) return {url:c.url, key:c.key, from:'local'};
+  }catch(e){}
+  return null;
+}
+/* เปิดแบบ file:// หรือรัน static server เฉย ๆ จะเรียก /api/config ไม่ได้
+   → กลืน error แล้วตกไปใช้ค่าที่กรอกเองแทน */
+async function serverCfg(){
+  try{
+    const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    const t = ctl ? setTimeout(() => ctl.abort(), 6000) : null;
+    const r = await fetch(CONFIG_API, ctl ? {signal:ctl.signal} : {});
+    if(t) clearTimeout(t);
+    if(!r.ok) return null;
+    const j = await r.json();
+    if(j && j.ok && j.url && j.key) return {url:j.url, key:j.key, from:'env'};
+    if(j && j.error) CFG_SERVER_ERR = j.error;
+  }catch(e){}
+  return null;
+}
+async function resolveCfg(){
+  if(SUPABASE_URL && SUPABASE_ANON_KEY) return {url:SUPABASE_URL, key:SUPABASE_ANON_KEY, from:'code'};
+  return (await serverCfg()) || localCfg();
+}
+function makeClient(cfg){
+  return window.supabase.createClient(cfg.url, cfg.key, {auth:{
+    persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, storageKey:AUTH_KEY
+  }});
+}
+/* client สำรอง — ใช้สร้างบัญชีใหม่ / ตรวจรหัสผ่านเดิม โดยไม่ไปแตะ session ของคนที่ล็อกอินอยู่ */
+function sideClient(){
+  return window.supabase.createClient(SBCFG.url, SBCFG.key, {auth:{
+    persistSession:false, autoRefreshToken:false, detectSessionInUrl:false, storageKey:KEY+'.side'
+  }});
+}
+
+/* ---------- แปล error ของ Supabase เป็นภาษาไทย ---------- */
+function authMsg(err){
+  const m = String((err && (err.message||err.error_description)) || err || '');
+  if(/Invalid login credentials/i.test(m))   return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+  if(/Email not confirmed/i.test(m))         return 'อีเมลนี้ยังไม่ได้ยืนยัน — ให้ผู้ดูแลระบบปิด Confirm email ใน Supabase หรือยืนยันอีเมลก่อน';
+  if(/already registered|already been registered|User already/i.test(m)) return 'อีเมลนี้มีบัญชีอยู่ในระบบแล้ว';
+  if(/Password should be at least/i.test(m)) return 'รหัสผ่านสั้นเกินไป';
+  if(/Signups not allowed|signup is disabled/i.test(m)) return 'Supabase ปิดการสมัครบัญชีใหม่อยู่ — เปิด Allow new users to sign up ใน Authentication → Sign In / Providers';
+  if(/rate limit|too many|For security purposes/i.test(m)) return 'ทำรายการถี่เกินไป กรุณารอสักครู่แล้วลองใหม่';
+  if(/Failed to fetch|NetworkError|ERR_NAME/i.test(m))     return 'เชื่อมต่อ Supabase ไม่ได้ — ตรวจสอบ Project URL และอินเทอร์เน็ต';
+  if(/Invalid API key|JWSError|JWT/i.test(m)) return 'anon key ไม่ถูกต้อง — ตรวจสอบค่าที่หน้า Project Settings → API';
+  if(/row-level security|permission denied/i.test(m))      return 'ไม่มีสิทธิ์ทำรายการนี้ (ถูกปฏิเสธโดย Row Level Security)';
+  if(/does not exist|schema cache/i.test(m))               return 'ยังไม่ได้สร้างตาราง profiles — รันไฟล์ supabase/schema.sql ใน SQL Editor ก่อน';
+  return m || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
+}
+
+/* ---------- สลับหน้าจอย่อยในกล่อง login ---------- */
+function authPane(which){
+  [['cfgPane','cfg'],['loginForm','login'],['forgotForm','forgot'],['newPassForm','newpass']]
+    .forEach(p => $('#'+p[0]).classList.toggle('hidden', p[1]!==which));
+}
+function busy(sel, on, label){
+  const b = $(sel); if(!b) return;
+  if(on){ if(!b.dataset.label) b.dataset.label = b.textContent; b.textContent = label||'กำลังทำงาน...'; b.disabled = true; }
+  else  { if(b.dataset.label) b.textContent = b.dataset.label; b.disabled = false; }
+}
+
+/* ---------- profile ---------- */
+async function fetchProfile(id){
+  const {data, error} = await sb.from('profiles').select('*').eq('id', id).maybeSingle();
+  if(error) throw error;
+  return data;
+}
+function toUser(p, email){
+  const mail = p.email || email || '';
+  return {id:p.id, username:mail, email:mail, name:p.full_name || mail.split('@')[0],
+          role:p.role||'user', active:p.active!==false, perms:p.perms||{}};
+}
+
+/* ---------- เข้าใช้งานด้วย session ที่ได้มา ---------- */
+async function useSession(session){
+  const p = await fetchProfile(session.user.id);
+  if(!p){
+    await sb.auth.signOut();
+    throw new Error('บัญชีนี้ยังไม่มีข้อมูลสิทธิ์ในระบบ — แจ้งผู้ดูแลระบบให้เพิ่มสิทธิ์ก่อน');
+  }
+  if(p.active === false){
+    await sb.auth.signOut();
+    throw new Error('บัญชีนี้ยังไม่ได้เปิดใช้งาน หรือถูกระงับ — ติดต่อผู้ดูแลระบบ');
+  }
+  USER = toUser(p, session.user.email);
   startApp();
+}
+
+/* ---------- ฟอร์มเข้าสู่ระบบ ---------- */
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const email = $('#liUser').value.trim(), pass = $('#liPass').value;
+  if(!email || !pass){ $('#liErr').textContent = 'กรุณากรอกอีเมลและรหัสผ่าน'; return; }
+  $('#liErr').textContent = ''; busy('#liBtn', true, 'กำลังเข้าสู่ระบบ...');
+  try{
+    const {data, error} = await sb.auth.signInWithPassword({email, password:pass});
+    if(error) throw error;
+    $('#liPass').value = '';
+    await useSession(data.session);
+  }catch(err){ $('#liErr').textContent = authMsg(err); }
+  finally{ busy('#liBtn', false); }
 };
-$('#btnLogout').onclick = () => {
-  USER=null; sessionStorage.removeItem(KEY+'.user');
+
+/* ---------- ลืมรหัสผ่าน ---------- */
+/* เปิดไฟล์แบบ file:// จะไม่มี origin ที่ส่งกลับได้ → ปล่อยให้ Supabase ใช้ Site URL ที่ตั้งไว้ */
+function resetOpts(){
+  const o = location.origin;
+  return (o && o !== 'null') ? {redirectTo: o + location.pathname} : undefined;
+}
+$('#btnForgot').onclick = () => {
+  $('#fgMail').value = $('#liUser').value.trim(); $('#fgErr').textContent = '';
+  authPane('forgot'); $('#fgMail').focus();
+};
+$('#btnBackLogin').onclick = () => { $('#liErr').textContent = ''; authPane('login'); $('#liUser').focus(); };
+$('#forgotForm').onsubmit = async e => {
+  e.preventDefault();
+  const email = $('#fgMail').value.trim();
+  if(!email){ $('#fgErr').textContent = 'กรุณากรอกอีเมล'; return; }
+  $('#fgErr').textContent = ''; busy('#fgBtn', true, 'กำลังส่ง...');
+  try{
+    const {error} = await sb.auth.resetPasswordForEmail(email, resetOpts());
+    if(error) throw error;
+    alert('ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ ' + email + ' แล้ว\nเปิดลิงก์ในอีเมลเพื่อตั้งรหัสผ่านใหม่');
+    authPane('login'); $('#liUser').focus();
+  }catch(err){ $('#fgErr').textContent = authMsg(err); }
+  finally{ busy('#fgBtn', false); }
+};
+
+/* ---------- ตั้งรหัสผ่านใหม่จากลิงก์ในอีเมล ---------- */
+$('#newPassForm').onsubmit = async e => {
+  e.preventDefault();
+  const p1 = $('#npPass').value, p2 = $('#npPass2').value;
+  if(p1.length < 8){ $('#npErr').textContent = 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร'; return; }
+  if(p1 !== p2){ $('#npErr').textContent = 'รหัสผ่านทั้งสองช่องไม่ตรงกัน'; return; }
+  $('#npErr').textContent = ''; busy('#npBtn', true, 'กำลังบันทึก...');
+  try{
+    const {error} = await sb.auth.updateUser({password:p1});
+    if(error) throw error;
+    RECOVERY = false;
+    if(history.replaceState) history.replaceState(null, '', location.pathname + location.search);
+    alert('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว');
+    const {data:{session}} = await sb.auth.getSession();
+    if(session) await useSession(session); else { authPane('login'); $('#liUser').focus(); }
+  }catch(err){ $('#npErr').textContent = authMsg(err); }
+  finally{ busy('#npBtn', false); }
+};
+
+/* ---------- ตั้งค่าการเชื่อมต่อ ---------- */
+$('#btnEditCfg').onclick = () => {
+  const c = localCfg() || {};
+  $('#cfgUrl').value = c.url||''; $('#cfgKey').value = c.key||''; $('#cfgErr').textContent = '';
+  authPane('cfg'); $('#cfgUrl').focus();
+};
+$('#cfgSave').onclick = () => {
+  const url = $('#cfgUrl').value.trim().replace(/\/+$/, ''), key = $('#cfgKey').value.trim();
+  if(!/^https?:\/\/\S+$/.test(url)){ $('#cfgErr').textContent = 'Project URL ต้องขึ้นต้นด้วย https:// เช่น https://xxxx.supabase.co'; return; }
+  if(key.length < 30){ $('#cfgErr').textContent = 'anon public key ไม่ถูกต้อง (สั้นเกินไป)'; return; }
+  localStorage.setItem(CFG_KEY, JSON.stringify({url:url, key:key}));
+  location.reload();
+};
+
+/* ---------- ออกจากระบบ ---------- */
+$('#btnLogout').onclick = async () => {
+  if(!confirm('ออกจากระบบ?')) return;
+  try{ if(sb) await sb.auth.signOut(); }catch(e){}
+  USER = null;
   $('#app').classList.remove('on'); $('#loginView').classList.remove('hidden');
-  $('#liUser').value=''; $('#liUser').focus();
+  authPane('login');
+  $('#liUser').value = ''; $('#liPass').value = ''; $('#liErr').textContent = '';
+  $('#liUser').focus();
 };
+
+/* ---------- เปลี่ยนรหัสผ่านของตัวเอง ---------- */
+$('#btnMyPass').onclick = () => {
+  if(!USER) return;
+  openModal('<h3>เปลี่ยนรหัสผ่านของฉัน</h3>' +
+    '<div class="notice">บัญชี <b>' + esc(USER.email) + '</b></div>' +
+    '<div class="field"><label>รหัสผ่านปัจจุบัน *</label><input id="mpOld" type="password" autocomplete="current-password"></div>' +
+    '<div class="row2"><div class="field"><label>รหัสผ่านใหม่ *</label><input id="mpNew" type="password" autocomplete="new-password"><div class="hint">อย่างน้อย 8 ตัวอักษร</div></div>' +
+    '<div class="field"><label>ยืนยันรหัสผ่านใหม่ *</label><input id="mpNew2" type="password" autocomplete="new-password"></div></div>' +
+    '<div class="error" id="mpErr"></div>' +
+    '<div class="modal-actions"><button class="outline" onclick="closeModal()">ยกเลิก</button>' +
+    '<button class="primary" id="mpSave">บันทึกรหัสผ่านใหม่</button></div>');
+  $('#mpSave').onclick = async () => {
+    const oldp = $('#mpOld').value, p1 = $('#mpNew').value, p2 = $('#mpNew2').value;
+    if(!oldp){ $('#mpErr').textContent = 'กรุณากรอกรหัสผ่านปัจจุบัน'; return; }
+    if(p1.length < 8){ $('#mpErr').textContent = 'รหัสผ่านใหม่ต้องยาวอย่างน้อย 8 ตัวอักษร'; return; }
+    if(p1 !== p2){ $('#mpErr').textContent = 'รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน'; return; }
+    $('#mpErr').textContent = ''; busy('#mpSave', true, 'กำลังบันทึก...');
+    try{
+      /* ตรวจรหัสผ่านเดิมด้วย client สำรอง เพื่อไม่ให้ session ปัจจุบันถูกเขียนทับ */
+      const side = sideClient();
+      const chk = await side.auth.signInWithPassword({email:USER.email, password:oldp});
+      if(chk.error) throw new Error('รหัสผ่านปัจจุบันไม่ถูกต้อง');
+      try{ await side.auth.signOut(); }catch(e){}
+      const {error} = await sb.auth.updateUser({password:p1});
+      if(error) throw error;
+      closeModal(); alert('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว');
+    }catch(err){ $('#mpErr').textContent = authMsg(err); }
+    finally{ busy('#mpSave', false); }
+  };
+};
+
 function can(m){ return USER && (USER.role==='admin' || (USER.perms && USER.perms[m])); }
 function isAdmin(){ return USER && USER.role==='admin'; }
 
@@ -1412,66 +1657,153 @@ $('#btnRepCsv').onclick = () => {
 $('#btnRepPrint').onclick = () => window.print();
 
 /* ============================================================
-   USERS / PERMISSIONS
+   USERS / PERMISSIONS  —  ตาราง public.profiles บน Supabase
    ============================================================ */
-function renderUsers(){
+let PROFILES = [];
+
+async function renderUsers(){
   const admin = isAdmin();
   $('#userNotice').innerHTML = admin
-    ? 'คุณเข้าใช้งานในระดับ <b>ผู้ดูแลระบบ</b> — แก้ไขสิทธิ์ เพิ่ม/ลบผู้ใช้ และเปลี่ยนรหัสผ่านได้'
-    : 'คุณเข้าใช้งานในระดับผู้ใช้ทั่วไป — <b>ดูได้อย่างเดียว</b> เฉพาะ admin เท่านั้นที่แก้ไขสิทธิ์ได้';
-  $('#userNotice').className = 'notice'+(admin?'':' warn');
+    ? 'คุณเข้าใช้งานในระดับ <b>ผู้ดูแลระบบ</b> — เพิ่มผู้ใช้ กำหนดสิทธิ์ และส่งลิงก์ตั้งรหัสผ่านใหม่ได้'
+    : 'คุณเข้าใช้งานในระดับผู้ใช้ทั่วไป — <b>ดูได้เฉพาะบัญชีของตัวเอง</b> เฉพาะ admin เท่านั้นที่แก้ไขสิทธิ์ได้';
+  $('#userNotice').className = 'notice' + (admin?'':' warn');
   $('#btnAddUser').classList.toggle('hidden', !admin);
-  $('#userCount').textContent = DB.users.length+' บัญชี';
+  $('#userTable').innerHTML = '<div class="subtle" style="padding:16px">กำลังโหลดรายชื่อผู้ใช้จาก Supabase...</div>';
+  $('#userCount').textContent = '';
+
+  try{
+    const {data, error} = await sb.from('profiles').select('*').order('created_at', {ascending:true});
+    if(error) throw error;
+    PROFILES = data || [];
+  }catch(err){
+    $('#userTable').innerHTML = '<div class="notice bad" style="margin:16px">โหลดรายชื่อผู้ใช้ไม่สำเร็จ: ' + esc(authMsg(err)) + '</div>';
+    return;
+  }
+
+  $('#userCount').textContent = PROFILES.length + ' บัญชี';
   $('#userTable').innerHTML = table(
-    ['ชื่อผู้ใช้','ชื่อ-นามสกุล','ระดับสิทธิ์','เมนูที่เข้าถึงได้','สถานะ',''],
-    DB.users.map(u=>{
+    ['อีเมล','ชื่อ-นามสกุล','ระดับสิทธิ์','เมนูที่เข้าถึงได้','สถานะ',''],
+    PROFILES.map(u => {
       const perms = u.role==='admin' ? 'ทุกเมนู (ผู้ดูแลระบบ)' :
-        MENUS.filter(m=>u.perms&&u.perms[m[0]]).map(m=>'<span class="tag">'+m[1]+'</span>').join('')||'<span class="subtle">ไม่มีสิทธิ์</span>';
-      return ['<b>'+esc(u.username)+'</b>', esc(u.name),
+        MENUS.filter(m => u.perms && u.perms[m[0]]).map(m => '<span class="tag">'+m[1]+'</span>').join('')
+        || '<span class="subtle">ไม่มีสิทธิ์</span>';
+      const acts = admin
+        ? '<button class="link" data-edituser="'+esc(u.id)+'">แก้ไข</button>' +
+          '<button class="link" data-resetuser="'+esc(u.id)+'">ส่งลิงก์รหัสผ่าน</button>' +
+          (u.id===USER.id ? '' : '<button class="link" style="color:var(--red)" data-deluser="'+esc(u.id)+'">ลบ</button>')
+        : '<span class="subtle">-</span>';
+      return ['<b>'+esc(u.email||'-')+'</b>', esc(u.full_name||'-'),
         '<span class="badge '+(u.role==='admin'?'b-book':'b-free')+'">'+(u.role==='admin'?'ผู้ดูแลระบบ':'ผู้ใช้ทั่วไป')+'</span>',
-        perms, '<span class="badge '+(u.active?'b-done':'b-off')+'">'+(u.active?'ใช้งาน':'ระงับ')+'</span>',
-        admin ? '<button class="link" data-edituser="'+esc(u.username)+'">แก้ไข</button>'+
-          (u.username===USER.username?'':'<button class="link" style="color:var(--red)" data-deluser="'+esc(u.username)+'">ลบ</button>') : '<span class="subtle">-</span>'];
+        perms,
+        '<span class="badge '+(u.active?'b-done':'b-off')+'">'+(u.active?'ใช้งาน':'ระงับ')+'</span>',
+        acts];
     }));
-  $$('#userTable [data-edituser]').forEach(b=>b.onclick=()=>userForm(DB.users.find(u=>u.username===b.dataset.edituser)));
-  $$('#userTable [data-deluser]').forEach(b=>b.onclick=()=>{
-    const u=b.dataset.deluser;
-    const target=DB.users.find(x=>x.username===u);
-    if(target.role==='admin' && DB.users.filter(x=>x.role==='admin').length<=1){ alert('ต้องมีผู้ดูแลระบบอย่างน้อย 1 บัญชี'); return; }
-    if(!confirm('ลบผู้ใช้ '+u+' ?')) return;
-    DB.users=DB.users.filter(x=>x.username!==u); save(); renderUsers();
-  });
+
+  $$('#userTable [data-edituser]').forEach(b => b.onclick = () => userForm(PROFILES.find(u => u.id===b.dataset.edituser)));
+  $$('#userTable [data-resetuser]').forEach(b => b.onclick = () => sendReset(PROFILES.find(u => u.id===b.dataset.resetuser)));
+  $$('#userTable [data-deluser]').forEach(b => b.onclick = () => removeUser(PROFILES.find(u => u.id===b.dataset.deluser)));
 }
-$('#btnAddUser').onclick = ()=>userForm(null);
+
+function adminCount(){ return PROFILES.filter(u => u.role==='admin' && u.active).length; }
+
+async function sendReset(u){
+  if(!u || !u.email) return;
+  if(!confirm('ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ ' + u.email + ' ?')) return;
+  try{
+    const {error} = await sb.auth.resetPasswordForEmail(u.email, resetOpts());
+    if(error) throw error;
+    alert('ส่งลิงก์ไปที่ ' + u.email + ' แล้ว');
+  }catch(err){ alert('ส่งลิงก์ไม่สำเร็จ: ' + authMsg(err)); }
+}
+
+async function removeUser(u){
+  if(!u) return;
+  if(u.id === USER.id){ alert('ลบบัญชีของตัวเองไม่ได้'); return; }
+  if(u.role==='admin' && u.active && adminCount() <= 1){ alert('ต้องมีผู้ดูแลระบบที่ใช้งานอยู่อย่างน้อย 1 บัญชี'); return; }
+  if(!confirm('ลบสิทธิ์การใช้งานของ ' + u.email + ' ?\n\n' +
+    'บัญชีจะเข้าสู่ระบบไม่ได้อีกทันที แต่ตัวบัญชีใน Supabase Auth ยังอยู่\n' +
+    'ถ้าต้องการลบถาวร ให้ลบที่ Supabase → Authentication → Users ด้วย')) return;
+  try{
+    const {error} = await sb.from('profiles').delete().eq('id', u.id);
+    if(error) throw error;
+    renderUsers();
+  }catch(err){ alert('ลบไม่สำเร็จ: ' + authMsg(err)); }
+}
+
+$('#btnAddUser').onclick = () => userForm(null);
+
 function userForm(u){
   if(!isAdmin()){ alert('เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขได้'); return; }
-  const e = u || {username:'',password:'',name:'',role:'user',active:true,perms:{dashboard:true,scan:true}};
-  openModal('<h3>'+(u?'แก้ไขผู้ใช้งาน':'เพิ่มผู้ใช้งาน')+'</h3>'+
-    '<div class="row2"><div class="field"><label>ชื่อผู้ใช้ *</label><input id="ufUser" value="'+esc(e.username)+'"'+(u?' readonly':'')+'></div>'+
-    '<div class="field"><label>รหัสผ่าน *</label><input id="ufPass" value="'+esc(e.password)+'"><div class="hint">รหัสแบบ Fixed สำหรับ login</div></div></div>'+
-    '<div class="row2"><div class="field"><label>ชื่อ-นามสกุล</label><input id="ufName" value="'+esc(e.name)+'"></div>'+
-    '<div class="field"><label>ระดับสิทธิ์</label><select id="ufRole">'+
-      '<option value="user"'+(e.role==='user'?' selected':'')+'>ผู้ใช้ทั่วไป</option>'+
-      '<option value="admin"'+(e.role==='admin'?' selected':'')+'>ผู้ดูแลระบบ (admin)</option></select></div></div>'+
-    '<div class="field"><label>เมนูที่อนุญาตให้ใช้งาน</label><div id="ufPerms" style="border:1px solid var(--line);border-radius:9px;padding:8px 12px">'+
-      MENUS.map(m=>'<div class="chk"><input type="checkbox" id="pm-'+m[0]+'" data-perm="'+m[0]+'"'+((e.perms&&e.perms[m[0]])?' checked':'')+'>'+
-        '<label for="pm-'+m[0]+'" style="margin:0">'+m[1]+'</label></div>').join('')+
-      '</div><div class="hint">ผู้ดูแลระบบเข้าถึงได้ทุกเมนูโดยอัตโนมัติ</div></div>'+
-    '<div class="chk"><input type="checkbox" id="ufActive"'+(e.active?' checked':'')+'><label for="ufActive" style="margin:0">เปิดใช้งานบัญชีนี้</label></div>'+
-    '<div class="modal-actions"><button class="outline" onclick="closeModal()">ยกเลิก</button><button class="primary" id="ufSave">บันทึก</button></div>');
-  $('#ufSave').onclick = () => {
-    const un=$('#ufUser').value.trim(), pw=$('#ufPass').value;
-    if(!un||!pw){ alert('กรุณาระบุชื่อผู้ใช้และรหัสผ่าน'); return; }
-    if(!u && DB.users.some(x=>x.username.toLowerCase()===un.toLowerCase())){ alert('มีชื่อผู้ใช้นี้อยู่แล้ว'); return; }
-    const perms={}; $$('#ufPerms [data-perm]').forEach(c=>perms[c.dataset.perm]=c.checked);
-    const role=$('#ufRole').value;
-    if(u && u.role==='admin' && role!=='admin' && DB.users.filter(x=>x.role==='admin').length<=1){
-      alert('ต้องมีผู้ดูแลระบบอย่างน้อย 1 บัญชี'); return; }
-    const rec={username:un, password:pw, name:$('#ufName').value.trim()||un, role:role, active:$('#ufActive').checked, perms:perms};
-    if(u){ Object.assign(u,rec); if(USER.username===u.username){ USER=u; startApp(); } }
-    else DB.users.push(rec);
-    save(); closeModal(); renderUsers();
+  const e = u || {email:'', full_name:'', role:'user', active:true, perms:{dashboard:true, scan:true}};
+  openModal('<h3>' + (u?'แก้ไขผู้ใช้งาน':'เพิ่มผู้ใช้งาน') + '</h3>' +
+    (u ? '' : '<div class="notice">ระบบจะสร้างบัญชีใหม่ใน Supabase Auth ให้ทันที — แจ้งอีเมลและรหัสผ่านชั่วคราวนี้ให้ผู้ใช้ แล้วให้เขาเปลี่ยนรหัสผ่านเองภายหลัง</div>') +
+    '<div class="row2"><div class="field"><label>อีเมล *</label>' +
+      '<input id="ufMail" type="email" value="' + esc(e.email||'') + '"' + (u?' readonly':'') + ' autocomplete="off">' +
+      '<div class="hint">' + (u ? 'เปลี่ยนอีเมลได้ที่ Supabase → Authentication → Users' : 'ใช้เป็นชื่อผู้ใช้สำหรับเข้าสู่ระบบ') + '</div></div>' +
+    '<div class="field"><label>ชื่อ-นามสกุล</label><input id="ufName" value="' + esc(e.full_name||'') + '"></div></div>' +
+    (u ? '' :
+    '<div class="field"><label>รหัสผ่านชั่วคราว *</label><input id="ufPass" type="text" autocomplete="off" value="' + esc(randomPass()) + '">' +
+      '<div class="hint">อย่างน้อย 8 ตัวอักษร — ระบบสุ่มมาให้แล้ว แก้ไขได้</div></div>') +
+    '<div class="field"><label>ระดับสิทธิ์</label><select id="ufRole">' +
+      '<option value="user"' + (e.role==='user'?' selected':'') + '>ผู้ใช้ทั่วไป</option>' +
+      '<option value="admin"' + (e.role==='admin'?' selected':'') + '>ผู้ดูแลระบบ (admin)</option></select></div>' +
+    '<div class="field"><label>เมนูที่อนุญาตให้ใช้งาน</label><div id="ufPerms" style="border:1px solid var(--line);border-radius:9px;padding:8px 12px">' +
+      MENUS.map(m => '<div class="chk"><input type="checkbox" id="pm-'+m[0]+'" data-perm="'+m[0]+'"' + ((e.perms && e.perms[m[0]])?' checked':'') + '>' +
+        '<label for="pm-'+m[0]+'" style="margin:0">'+m[1]+'</label></div>').join('') +
+      '</div><div class="hint">ผู้ดูแลระบบเข้าถึงได้ทุกเมนูโดยอัตโนมัติ</div></div>' +
+    '<div class="chk"><input type="checkbox" id="ufActive"' + (e.active?' checked':'') + '><label for="ufActive" style="margin:0">เปิดใช้งานบัญชีนี้</label></div>' +
+    '<div class="error" id="ufErr"></div>' +
+    '<div class="modal-actions"><button class="outline" onclick="closeModal()">ยกเลิก</button>' +
+    '<button class="primary" id="ufSave">บันทึก</button></div>');
+
+  $('#ufSave').onclick = async () => {
+    const mail = $('#ufMail').value.trim().toLowerCase();
+    const name = $('#ufName').value.trim();
+    const role = $('#ufRole').value;
+    const active = $('#ufActive').checked;
+    const perms = {}; $$('#ufPerms [data-perm]').forEach(c => perms[c.dataset.perm] = c.checked);
+    const err = m => { $('#ufErr').textContent = m; };
+
+    if(!/^\S+@\S+\.\S+$/.test(mail)){ err('กรุณากรอกอีเมลให้ถูกต้อง'); return; }
+    if(u && u.id === USER.id && (role!=='admin' || !active)){ err('ห้ามลดสิทธิ์หรือระงับบัญชีของตัวเอง'); return; }
+    if(u && u.role==='admin' && u.active && (role!=='admin' || !active) && adminCount() <= 1){
+      err('ต้องมีผู้ดูแลระบบที่ใช้งานอยู่อย่างน้อย 1 บัญชี'); return; }
+
+    err(''); busy('#ufSave', true, 'กำลังบันทึก...');
+    try{
+      let id = u && u.id;
+      if(!u){
+        const pass = $('#ufPass').value;
+        if(pass.length < 8){ throw new Error('รหัสผ่านชั่วคราวต้องยาวอย่างน้อย 8 ตัวอักษร'); }
+        /* สร้างบัญชีด้วย client สำรอง — session ของ admin ที่กำลังใช้งานจะไม่ถูกเขียนทับ */
+        const side = sideClient();
+        const {data, error} = await side.auth.signUp({email:mail, password:pass, options:{data:{full_name:name}}});
+        if(error) throw error;
+        if(!data.user) throw new Error('สร้างบัญชีไม่สำเร็จ — ลองใหม่อีกครั้ง');
+        if(data.user.identities && data.user.identities.length === 0) throw new Error('อีเมลนี้มีบัญชีอยู่ในระบบแล้ว');
+        try{ await side.auth.signOut(); }catch(e2){}
+        id = data.user.id;
+      }
+      /* profile ถูกสร้างโดย trigger เป็น role=user / active=false เสมอ — admin เป็นคนกำหนดสิทธิ์จริงตรงนี้ */
+      const {data:rows, error:upErr} = await sb.from('profiles')
+        .update({email:mail, full_name:name||mail.split('@')[0], role:role, active:active, perms:perms})
+        .eq('id', id).select();
+      if(upErr) throw upErr;
+      if(!rows || !rows.length) throw new Error('บันทึกสิทธิ์ไม่สำเร็จ — บัญชีถูกสร้างแล้วแต่ยังไม่ได้กำหนดสิทธิ์ ลองกดแก้ไขอีกครั้ง');
+
+      if(u && u.id === USER.id){ USER = toUser(rows[0], USER.email); startApp(); }
+      closeModal();
+      if(!u) alert('สร้างบัญชี ' + mail + ' เรียบร้อยแล้ว\nแจ้งรหัสผ่านชั่วคราวให้ผู้ใช้ แล้วให้เปลี่ยนรหัสผ่านเองภายหลัง');
+      renderUsers();
+    }catch(e3){ err(authMsg(e3)); }
+    finally{ busy('#ufSave', false); }
   };
+}
+
+function randomPass(){
+  const cs = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const a = new Uint32Array(12); (window.crypto||window.msCrypto).getRandomValues(a);
+  return Array.from(a, n => cs[n % cs.length]).join('');
 }
 /* backup / restore */
 $('#btnBackup').onclick = () => download('KanBarcode-backup-'+todayISO()+'.json', JSON.stringify(DB,null,2), 'application/json');
@@ -1482,7 +1814,7 @@ $('#restoreInput').onchange = e => {
   rd.onload = ev => {
     try{
       const d=JSON.parse(ev.target.result);
-      if(!d.users||!d.docs) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
+      if(!d.docs) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
       if(!confirm('กู้คืนข้อมูลจากไฟล์นี้? ข้อมูลปัจจุบันจะถูกแทนที่ทั้งหมด')) return;
       DB=d; save(); alert('กู้คืนข้อมูลสำเร็จ'); location.reload();
     }catch(err){ alert('กู้คืนไม่สำเร็จ: '+err.message); }
@@ -1491,15 +1823,51 @@ $('#restoreInput').onchange = e => {
 };
 $('#btnReset').onclick = () => {
   if(!isAdmin()){ alert('เฉพาะผู้ดูแลระบบเท่านั้น'); return; }
-  if(!confirm('รีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้น (รวมผู้ใช้และรหัสผ่าน)?')) return;
+  if(!confirm('รีเซ็ตเอกสาร รถ และการจอง กลับเป็นค่าเริ่มต้น? (บัญชีผู้ใช้บน Supabase จะไม่ถูกแตะต้อง)')) return;
   localStorage.removeItem(KEY); location.reload();
 };
 
 /* ---------- boot ---------- */
-(function boot(){
-  const u = sessionStorage.getItem(KEY+'.user');
-  const found = u && DB.users.find(x=>x.username===u && x.active);
-  if(found){ USER=found; startApp(); } else setTimeout(()=>$('#liUser').focus(),100);
+(async function boot(){
+  if(!window.supabase || !window.supabase.createClient){
+    authPane('cfg');
+    $('#cfgNote').className = 'notice bad';
+    $('#cfgNote').innerHTML = 'โหลดไลบรารี Supabase ไม่สำเร็จ — ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้านี้อีกครั้ง';
+    return;
+  }
+
+  SBCFG = await resolveCfg();
+  /* ค่ามาจาก Vercel env หรือฝังในโค้ด → กรอกเองไม่มีผล ซ่อนลิงก์ตั้งค่าไปเลย */
+  if(SBCFG && SBCFG.from !== 'local') $('#btnEditCfg').classList.add('hidden');
+  if(!SBCFG){
+    if(CFG_SERVER_ERR){ $('#cfgNote').className = 'notice warn'; $('#cfgNote').textContent = CFG_SERVER_ERR; }
+    authPane('cfg'); setTimeout(() => $('#cfgUrl').focus(), 100); return;
+  }
+
+  /* ตรวจก่อนสร้าง client เพราะ detectSessionInUrl จะล้าง hash ทิ้งทันที */
+  RECOVERY = /type=recovery/.test(location.hash) || /type=recovery/.test(location.search);
+  sb = makeClient(SBCFG);
+
+  function askNewPass(session){
+    RECOVERY = true;
+    $('#app').classList.remove('on');
+    $('#loginView').classList.remove('hidden');
+    $('#npMail').textContent = (session && session.user && session.user.email) || '';
+    authPane('newpass');
+    setTimeout(() => $('#npPass').focus(), 100);
+  }
+
+  sb.auth.onAuthStateChange((evt, session) => { if(evt === 'PASSWORD_RECOVERY') askNewPass(session); });
+
+  try{
+    const {data:{session}, error} = await sb.auth.getSession();
+    if(error) throw error;
+    if(RECOVERY && session){ askNewPass(session); return; }
+    if(session){ await useSession(session); return; }
+  }catch(err){
+    $('#liErr').textContent = authMsg(err);
+  }
+  authPane('login'); setTimeout(() => $('#liUser').focus(), 100);
 })();
 </script>
 </body>
