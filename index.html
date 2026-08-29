@@ -2440,10 +2440,36 @@ function sqlPayload(action, extra){
     view:$('#sqlView').value.trim()
   }, extra||{});
 }
+/* เครื่องปลายทางอยู่ในวงเน็ตเวิร์กภายในไหม (ไอพีส่วนตัว หรือชื่อเครื่องสั้น ๆ ที่ไม่มีจุด) */
+function isLanTarget(h){
+  const host = String(h||'').trim().split(/[\,]/)[0];
+  if(!host) return false;
+  if(/^(10\.|127\.|192\.168\.|169\.254\.)/.test(host)) return true;
+  if(/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return true;
+  if(/\.local$/i.test(host)) return true;
+  return host.indexOf('.') < 0;
+}
+/* หน้าเว็บนี้เปิดมาจากอินเทอร์เน็ต (เช่น Vercel) หรือจากเครื่องในวง */
+function pageIsRemote(){
+  const h = location.hostname;
+  if(location.protocol === 'file:') return false;
+  if(h === 'localhost' || h === '127.0.0.1' || h.endsWith('.local')) return false;
+  return !isLanTarget(h);
+}
 async function sqlCall(action, extra, busyText){
   const api=$('#sqlApi').value.trim()||'/api/sqlserver';
   const p=sqlPayload(action, extra);
   if(!p.server){ sqlMsg('bad','กรุณากรอกชื่อ Server'); return null; }
+  /* API อยู่ที่เดียวกับหน้าเว็บ + หน้าเว็บอยู่บนอินเทอร์เน็ต + เซิร์ฟเวอร์อยู่ในวง LAN
+     = ต่อไม่ติดแน่นอน บอกตั้งแต่ตอนนี้ ไม่ต้องรอ 15 วินาที */
+  if(api.charAt(0)==='/' && pageIsRemote() && isLanTarget(p.server)){
+    sqlMsg('bad','เครื่อง <b>'+esc(p.server)+'</b> อยู่ในวงเน็ตเวิร์กภายในของบริษัท '+
+      'แต่ตอนนี้คุณเปิดเว็บจาก <span class="mono">'+esc(location.hostname)+'</span> ซึ่งอยู่บนอินเทอร์เน็ต จึงต่อเข้าไปไม่ได้'+
+      '<br><b>วิธีแก้:</b> รัน <span class="mono">start-lan.bat</span> บนคอมเครื่องหนึ่งในออฟฟิศ '+
+      'แล้วเปิดเว็บจาก <span class="mono">http://&lt;ไอพีเครื่องนั้น&gt;:3000</span> จากนั้นค่อยมาหน้านี้อีกครั้ง'+
+      '<br>หรือใช้ตัวดึงข้อมูลอัตโนมัติ (sync-sql.js) ให้ส่งข้อมูลขึ้นคลาวด์เอง');
+    return null;
+  }
   if(action!=='databases' && !p.database){ sqlMsg('bad','กรุณาเลือกฐานข้อมูลก่อน'); return null; }
   if((action==='pull'||action==='preview') && !p.view){ sqlMsg('bad','กรุณาเลือก Table หรือ View ก่อน'); return null; }
   sqlMsg('warn', busyText || ('กำลังเชื่อมต่อ '+esc(p.server)+' ...'));

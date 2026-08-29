@@ -26,6 +26,16 @@ const { execFile } = require('child_process');
 
 function isIp(h) { return /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h.indexOf(':') > -1; }
 
+/* เครื่องปลายทางอยู่ในวงเน็ตเวิร์กภายในหรือเปล่า (ไอพีส่วนตัว หรือชื่อเครื่องสั้น ๆ ที่ไม่มีจุด) */
+function isLanTarget(h) {
+  const host = String(h || '').trim().split(/[\,]/)[0];
+  if (!host) return false;
+  if (/^(10\.|127\.|192\.168\.|169\.254\.)/.test(host)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return true;
+  if (/\.local$/i.test(host)) return true;
+  return host.indexOf('.') < 0;      /* เช่น bcs-server */
+}
+
 function pingLookup(host) {
   return new Promise(resolve => {
     execFile('ping', ['-n', '1', '-4', '-w', '1500', host], { timeout: 6000, windowsHide: true },
@@ -134,6 +144,19 @@ module.exports = async function handler(req, res) {
   const BS = String.fromCharCode(92); /* backslash */
   if (host.includes(BS)) { const p = host.split(BS); host = p[0]; instanceName = p[1]; }
   if (host.includes(',')) { const p = host.split(','); host = p[0]; }
+
+  /* API ตัวนี้รันอยู่บน Vercel (นอกวงบริษัท) จะต่อเข้าเครื่องในวง LAN ไม่ได้แน่ ๆ
+     บอกให้รู้ตั้งแต่แรก ดีกว่าปล่อยให้รอหมดเวลา 15 วินาทีแล้วงงว่าทำไมต่อไม่ติด */
+  if ((process.env.VERCEL || process.env.VERCEL_ENV) && isLanTarget(host)) {
+    res.status(200).json({
+      ok: false,
+      error: 'เครื่อง "' + host + '" อยู่ในวงเน็ตเวิร์กภายใน แต่หน้าเว็บนี้เรียก API ที่รันอยู่บน Vercel ' +
+        'ซึ่งอยู่นอกวงบริษัท จึงต่อเข้าไปไม่ได้ — ให้เปิดเว็บจากลิงก์ในวง LAN แทน ' +
+        '(รัน start-lan.bat บนเครื่องในออฟฟิศ แล้วเปิด http://<ไอพีเครื่องนั้น>:3000) ' +
+        'หรือใช้ตัวดึงข้อมูลอัตโนมัติ sync-sql.js'
+    });
+    return;
+  }
 
   /* ชื่อเครื่องในวง LAN → แปลงเป็นไอพีก่อน กัน getaddrinfo EBUSY บน Windows */
   const original = host;
