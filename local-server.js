@@ -14,11 +14,11 @@
      /api/sqlserver        ต่อ SQL Server (ไฟล์เดียวกับที่ใช้บน Vercel)
      /api/config           ค่า Supabase จาก Environment Variables
 
-   ค่า Supabase อ่านจากตัวแปรแวดล้อม เหมือนบน Vercel เป๊ะ ๆ
-   ตั้งก่อนสั่ง npm start (Windows PowerShell)
-     $env:NEXT_PUBLIC_SUPABASE_URL      = "https://xxxx.supabase.co"
+   ค่า Supabase อ่านจากไฟล์ .env.local ในโฟลเดอร์นี้ให้อัตโนมัติ
+     คัดลอก .env.local.example เป็น .env.local แล้วใส่ anon key
+   หรือจะตั้งเป็นตัวแปรแวดล้อมเองก็ได้ (PowerShell)
      $env:NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGci..."
-   ถ้าไม่ตั้ง หน้าเว็บจะให้กรอก Project URL / anon key เองที่หน้าล็อกอิน
+   ถ้าไม่ตั้งเลย หน้าเว็บจะให้กรอก Project URL / anon key เองที่หน้าล็อกอิน
    ============================================================ */
 const http = require('http');
 const fs = require('fs');
@@ -27,6 +27,22 @@ const os = require('os');
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const ROOT = __dirname;
+
+/* อ่าน .env.local แบบง่าย ๆ (KEY=VALUE บรรทัดละตัว, # คือคอมเมนต์)
+   ตัวแปรที่ตั้งไว้ในเครื่องอยู่แล้วมาก่อนเสมอ ไม่ทับของเดิม */
+function loadEnvLocal() {
+  const file = path.join(ROOT, '.env.local');
+  if (!fs.existsSync(file)) return false;
+  const text = fs.readFileSync(file, 'utf8');
+  text.split(/\r?\n/).forEach(line => {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!m) return;
+    const val = m[2].trim().replace(/^["']|["']$/g, '');
+    if (val && process.env[m[1]] === undefined) process.env[m[1]] = val;
+  });
+  return true;
+}
+const USED_ENV_FILE = loadEnvLocal();
 
 const API = {
   '/api/sqlserver': require('./api/sqlserver'),
@@ -94,6 +110,14 @@ server.listen(PORT, () => {
   console.log('  เครื่องนี้      : http://localhost:' + PORT);
   ips.forEach(ip => console.log('  เครื่องอื่นในวง : http://' + ip + ':' + PORT));
   console.log('');
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.log('Supabase : ตั้งค่าแล้ว' + (USED_ENV_FILE ? ' (อ่านจากไฟล์ .env.local)' : ' (จากตัวแปรแวดล้อม)'));
+  } else {
+    console.log('Supabase : ยังไม่ได้ตั้งค่า — คัดลอก .env.local.example เป็น .env.local');
+    console.log('           แล้วใส่ NEXT_PUBLIC_SUPABASE_ANON_KEY ก่อนสั่ง npm start');
+    console.log('           (ไม่ตั้งก็ใช้ได้ แต่ต้องกรอก Project URL / anon key เองที่หน้าล็อกอินทุกเครื่อง)');
+  }
+  console.log('');
   console.log('หน้าเชื่อมต่อ SQL Server: เมนู "ข้อมูลเอกสาร" → แท็บ "เชื่อมต่อ SQL Server"');
-  console.log('ช่อง API Endpoint ให้ใส่ /api/sqlserver ตามเดิม');
+  console.log('ช่อง API Endpoint ให้ใส่ /api/sqlserver ตามเดิม  (กด Ctrl+C เพื่อปิดเซิร์ฟเวอร์)');
 });

@@ -63,6 +63,7 @@ index.html               เว็บทั้งระบบ (HTML + CSS + JS �
 api/config.js            ส่งค่า Supabase จาก Environment Variables ให้หน้าเว็บ
 api/sqlserver.js         API เชื่อมต่อ SQL Server (ใช้ได้ทั้งบน Vercel และรันในเครื่อง)
 local-server.js          รันเว็บ + API ในเครื่อง สำหรับ SQL Server ที่อยู่ในวง LAN (npm start)
+start-lan.bat            ดับเบิลคลิกเพื่อเปิดเซิร์ฟเวอร์ในวง LAN (เรียก local-server.js ให้)
 supabase/schema.sql      ตาราง profiles + RLS + trigger (รันใน SQL Editor)
 Docs/SUPABASE-SETUP.md   ขั้นตอนตั้งค่า Supabase ตั้งแต่ต้นจนจบ
 Docs/KanBarcode.txt      ข้อกำหนดและบันทึกการพัฒนา
@@ -115,27 +116,29 @@ vercel.json              ตั้งค่า Vercel
 
 ### SQL Server อยู่ในวง LAN (ใช้ IP ภายใน เช่น 192.168.x.x)
 
-เว็บบน Vercel อยู่บนอินเทอร์เน็ต **ต่อเข้า SQL Server ในวง LAN ไม่ได้**
-ให้รันตัวเว็บ + API บนเครื่องในวงเดียวกับ SQL Server แทน
+**ทำไมต้องทำแบบนี้** — เว็บบน Vercel รันอยู่บนเครื่องของ Vercel ที่อยู่บนอินเทอร์เน็ต
+คำสั่งต่อฐานข้อมูลจึงออกจากศูนย์ข้อมูลของ Vercel ไม่ได้ออกจากคอมของเรา
+IP แบบ `192.168.x.x` เป็นเลขที่ใช้ได้เฉพาะภายในวงเน็ตเวิร์กของบริษัท
+Vercel จึงหาเครื่อง SQL Server ไม่เจอ (ขึ้น `Failed to connect ... 192.168.x.x:1433`)
 
-```
-npm install
-npm start
-```
+**ทางแก้** — ย้ายตัวกลางมาไว้ในวงเดียวกัน โดยรันเว็บ + API บนคอมเครื่องหนึ่งในออฟฟิศ
 
-จะได้ที่อยู่แบบ `http://192.168.1.52:3000` ให้เครื่องอื่นในวงเปิดใช้งานได้เลย
-(ล็อกอิน Supabase ยังทำงานปกติ เพราะเรียกออกอินเทอร์เน็ตขาออกอย่างเดียว)
+1. ติดตั้ง [Node.js](https://nodejs.org) (รุ่น LTS) บนเครื่องนั้นครั้งเดียว
+2. คัดลอกโฟลเดอร์โปรเจกต์นี้ไปวางบนเครื่องนั้น
+3. คัดลอก `.env.local.example` เป็น `.env.local` แล้วใส่ anon key ของ Supabase
+4. ดับเบิลคลิก **`start-lan.bat`** (หรือสั่ง `npm install` แล้ว `npm start`)
+5. หน้าต่างคำสั่งจะบอกที่อยู่ เช่น `http://192.168.1.52:3000` — ให้ทุกเครื่องในวงเปิดที่อยู่นี้
+6. เข้าเมนู **ข้อมูลเอกสาร → เชื่อมต่อ SQL Server** ช่อง API Endpoint ใส่ `/api/sqlserver` ตามเดิม
 
-ตั้งค่า Supabase ก่อนสั่ง `npm start` — PowerShell:
+เครื่องที่รันต้องเปิดค้างไว้ระหว่างใช้งาน (ปิดด้วย Ctrl+C) และถ้า Windows Firewall ถาม
+ให้กด **Allow access** สำหรับ Private network ไม่งั้นเครื่องอื่นในวงจะเปิดไม่ได้
 
-```
-$env:NEXT_PUBLIC_SUPABASE_URL      = "https://xxxx.supabase.co"
-$env:NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGci..."
-npm start
-```
+ล็อกอิน Supabase กับการซิงก์ข้อมูลยังทำงานปกติ เพราะเป็นการเรียกออกอินเทอร์เน็ตขาออกอย่างเดียว
+ข้อมูลจึงเป็นชุดเดียวกับที่เปิดผ่าน Vercel
 
 > อย่าเปิดเว็บจาก Vercel (https) แล้วชี้ API Endpoint ไปที่ `http://192.168.x.x`
-> เบราว์เซอร์จะบล็อกเพราะเป็น mixed content — ต้องเปิดเว็บจากเครื่องที่รัน `npm start`
+> เบราว์เซอร์จะบล็อกเพราะเป็น mixed content (หน้า https เรียก http ไม่ได้)
+> — ต้องเปิดเว็บจากเครื่องที่รัน `start-lan.bat` เท่านั้น
 
 ## ข้อมูลถูกเก็บที่ไหน
 
