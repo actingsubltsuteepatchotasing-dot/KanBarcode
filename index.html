@@ -127,6 +127,21 @@ button{cursor:pointer;border-radius:9px;border:1px solid transparent;padding:9px
 .scan-form{display:flex;gap:9px;flex-wrap:wrap}
 .scan-form input{flex:1;min-width:220px;padding:13px 15px;border-radius:10px;border:0;outline:0;font-size:16px;letter-spacing:.04em}
 .scan-form button{padding:13px 22px;background:#fff;color:var(--navy)}
+.scan-pick{position:relative;flex:1;min-width:220px;display:flex}
+.scan-pick input{flex:1;min-width:0;padding-right:48px}
+.scan-form .pick-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:36px;height:34px;
+  padding:0;border-radius:8px;background:#eef2f9;color:var(--navy);font-size:12px;line-height:1}
+.scan-form .pick-toggle:hover{background:#dbe4f3}
+.scan-suggest{position:absolute;left:0;right:0;top:calc(100% + 6px);background:#fff;color:var(--ink);
+  border-radius:11px;box-shadow:0 16px 38px rgba(6,16,38,.34);max-height:298px;overflow:auto;z-index:40;padding:5px;text-align:left}
+.scan-suggest .sg{padding:8px 10px;border-radius:8px;cursor:pointer}
+.scan-suggest .sg.on,.scan-suggest .sg:hover{background:#eef4ff}
+.scan-suggest .sg-main{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.scan-suggest .sg-sub{font-size:11.5px;color:var(--muted);margin-top:2px;font-weight:400}
+.scan-suggest .sg-note{padding:10px;font-size:12px;color:var(--muted);text-align:center}
+.scan-suggest .sg-add{background:#f0f7ff;color:var(--blue)}
+.scan-suggest .sg-add:hover{background:#e0edff}
+.scan-suggest .sg-add .sg-sub{color:#5a7ba6}
 .scan-cfg{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .scan-cfg>div{flex:1;min-width:200px}
 .scan-cfg label{font-size:12px;color:#b9cbe8;font-weight:600;display:block;margin-bottom:5px}
@@ -134,6 +149,37 @@ button{cursor:pointer;border-radius:9px;border:1px solid transparent;padding:9px
 .flash{margin-bottom:14px;padding:11px 14px;border-radius:10px;font-size:13px;font-weight:600}
 .flash.ok{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
 .flash.err{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.flash-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.flash-actions .link{color:inherit;opacity:.7}
+
+/* ---------- จอแสดงผลสถานะเอกสาร (BOARD) ---------- */
+.board-sum{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.board-sum .bs{flex:1;min-width:140px;background:#fff;border:1px solid var(--line);
+  border-left:4px solid var(--line);border-radius:var(--radius);padding:12px 15px}
+.board-sum .bs b{display:block;font-size:27px;letter-spacing:-.02em;line-height:1.25}
+.board-sum .bs span{font-size:12.5px;color:var(--muted)}
+.board-sum .bs.all{border-left-color:var(--blue)}
+.board-sum .bs.none{border-left-color:#94a3b8}
+.board-sum .bs.ready{border-left-color:var(--yellow)}
+.board-sum .bs.sent{border-left-color:var(--orange)}
+.board-sum .bs.done{border-left-color:var(--green)}
+.board-auto{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.board-auto input{width:15px;height:15px}
+#boardTable th{font-size:13px;padding:12px 16px}
+#boardTable td{padding:13px 16px;font-size:18px}
+#boardTable .board-no{font-weight:700;font-size:21px;letter-spacing:.02em}
+#boardTable .board-date{font-size:16px;color:var(--muted);white-space:nowrap}
+#boardTable .board-st{display:inline-block;padding:6px 18px;border-radius:99px;font-size:16px;font-weight:700}
+/* จัดเสร็จแล้ว = พร้อมขึ้นรถ → แถวเป็นสีเหลืองอำพันและกระพริบให้สังเกตเห็นจากไกล */
+#boardTable tr.row-ready td{animation:boardBlink 1.1s steps(1,end) infinite}
+#boardTable tr.row-ready:hover td{background:inherit}
+#boardTable tr.row-ready .board-st{animation:boardBlinkPill 1.1s steps(1,end) infinite}
+@keyframes boardBlink{0%{background:#fde68a}50%{background:#fffbeb}100%{background:#fde68a}}
+@keyframes boardBlinkPill{0%{background:#b45309;color:#fff}50%{background:#fef3c7;color:#92400e}100%{background:#b45309;color:#fff}}
+#v-board:fullscreen{background:var(--bg);padding:26px;overflow:auto}
+#v-board:fullscreen .board-sum .bs b{font-size:34px}
+#v-board:fullscreen #boardTable td{font-size:23px;padding:16px 20px}
+#v-board:fullscreen #boardTable .board-no{font-size:27px}
 
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .cal .dow{background:var(--navy);color:#fff;border-radius:7px;text-align:center;padding:7px 0;font-size:12px;font-weight:600}
@@ -243,6 +289,7 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
       <div class="section">เมนูหลัก</div>
       <button data-view="dashboard" class="active">◈ <span>ภาพรวม</span></button>
       <button data-view="scan">⌁ <span>ยิงบาร์โค้ด</span></button>
+      <button data-view="board">▥ <span>จอแสดงผล</span></button>
       <button data-view="calendar">▦ <span>ปฏิทินรถ</span></button>
       <button data-view="map">⌖ <span>แผนที่การจัดส่ง</span></button>
       <div class="section">จัดการข้อมูล</div>
@@ -298,9 +345,15 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
             <div><label>สถานะที่จะบันทึกเมื่อยิงบาร์โค้ด</label><select id="scanStatus">
               <option>จัดเสร็จแล้ว</option><option>ส่งแล้ว</option><option>ถึงมือลูกค้าแล้ว</option></select></div>
           </div>
-          <label>สแกนหรือพิมพ์เลขที่เอกสาร แล้วกด Enter</label>
+          <label>ยิงบาร์โค้ด • พิมพ์เลขที่เอกสารเอง • หรือกด &#9662; เลือกจากรายการ แล้วกด Enter
+            <span style="font-weight:400;color:#8fa9cd">(เลขที่ยังไม่มีในระบบ คีย์ที่หน้าจอนี้เพิ่มเข้าระบบได้เลย ไม่ต้องนำเข้าไฟล์ก่อน)</span></label>
           <form class="scan-form" id="scanForm" autocomplete="off">
-            <input id="scanInput" placeholder="ยิงบาร์โค้ดที่นี่ เช่น KB-20260827-001">
+            <div class="scan-pick">
+              <input id="scanInput" placeholder="ยิงบาร์โค้ด / พิมพ์เลขที่เอกสาร เช่น KB-20260827-001"
+                autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="scanSuggest">
+              <button class="pick-toggle" type="button" id="scanPick" title="เลือกเลขที่เอกสารจากรายการ" aria-label="เลือกเลขที่เอกสารจากรายการ">&#9662;</button>
+              <div class="scan-suggest hidden" id="scanSuggest" role="listbox"></div>
+            </div>
             <button class="primary" type="submit">บันทึกสถานะ</button>
           </form>
           <div id="scanVehicleInfo" class="subtle" style="color:#b9cbe8;margin-top:12px"></div>
@@ -317,6 +370,28 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
         <div class="panel flush">
           <div class="panel-title"><h3>รายการเอกสาร</h3><span class="subtle" id="scanCount"></span></div>
           <div class="tbl-wrap" id="scanTable"></div>
+        </div>
+      </section>
+
+      <!-- ===== BOARD (จอแสดงผลสถานะเอกสาร) ===== -->
+      <section class="view" id="v-board">
+        <div class="page-head">
+          <div><div class="eyebrow">STATUS DISPLAY</div><h2>จอแสดงผลสถานะเอกสาร</h2></div>
+          <div class="head-actions">
+            <input type="date" id="boardDate" class="outline" style="padding:8px 11px;border:1px solid var(--line);border-radius:9px">
+            <button class="outline sm" id="btnBoardAll">ทุกวัน</button>
+            <button class="primary sm" id="btnBoardRefresh">&#8635; อัปเดตข้อมูล</button>
+            <label class="board-auto"><input type="checkbox" id="boardAuto" checked>อัปเดตเองทุก 15 วิ</label>
+            <button class="outline sm" id="btnBoardFull">&#9974; เต็มจอ</button>
+          </div>
+        </div>
+        <div class="board-sum" id="boardSum"></div>
+        <div class="panel flush">
+          <div class="panel-title">
+            <h3>รายการเอกสาร <span class="subtle" id="boardDayLabel"></span></h3>
+            <span class="subtle" id="boardStamp"></span>
+          </div>
+          <div class="tbl-wrap" id="boardTable"></div>
         </div>
       </section>
 
@@ -547,7 +622,7 @@ const KEY = 'kanbarcode.v2';
 const STATUS = ['ยังไม่จัด','จัดเสร็จแล้ว','ส่งแล้ว','ถึงมือลูกค้าแล้ว'];
 const VSTATUS = ['ว่าง','จองแล้ว','เดินทางอยู่'];
 const MENUS = [
-  ['dashboard','ภาพรวม'],['scan','ยิงบาร์โค้ด'],['calendar','ปฏิทินรถ'],['map','แผนที่การจัดส่ง'],
+  ['dashboard','ภาพรวม'],['scan','ยิงบาร์โค้ด'],['board','จอแสดงผล'],['calendar','ปฏิทินรถ'],['map','แผนที่การจัดส่ง'],
   ['docs','ข้อมูลเอกสาร'],['vehicles','รถและคนขับ'],['reports','รายงานประจำวัน'],['users','สิทธิ์ผู้ใช้งาน']
 ];
 
@@ -1072,6 +1147,7 @@ async function startApp(){
   const first = MENUS.map(m=>m[0]).find(can) || 'dashboard';
   const d = todayISO();
   $('#dashDay').value=d; $('#scanDate').value=d; $('#mapDate').value=d; $('#repFrom').value=d; $('#repTo').value=d;
+  $('#boardDate').value=d;
   calMonth = new Date(); calSel = d;
   loadSqlForm();
   go(first);
@@ -1095,7 +1171,7 @@ function go(view){
   $$('#nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
   const label = (MENUS.find(m=>m[0]===view)||['','']) [1];
   $('#crumb').textContent = 'KanBarcode / ' + label;
-  ({dashboard:renderDashboard, scan:renderScan, calendar:renderCalendar, map:renderMap,
+  ({dashboard:renderDashboard, scan:renderScan, board:renderBoard, calendar:renderCalendar, map:renderMap,
     docs:renderDocs, vehicles:renderVehicles, reports:renderReports, users:renderUsers}[view]||function(){})();
   window.scrollTo(0,0);
 }
@@ -1170,6 +1246,16 @@ function renderDashboard(){
       '<span class="subtle">'+esc(d.updatedAt||'-')+'</span>'])
   ) : '<div class="empty-state">ยังไม่มีการอัปเดตสถานะ</div>';
 }
+/* อัปเดตทุกหน้าที่คำนวณจากข้อมูลเอกสารให้ตรงกัน (ภาพรวม / ยิงบาร์โค้ด / เอกสาร / รายงาน + หน้าที่เปิดอยู่)
+   เรียกทุกครั้งที่มีการแก้ไขเอกสาร จะได้ไม่ต้องสลับหน้าไปมาเพื่อให้ตัวเลขอัปเดต */
+function refreshDocViews(){
+  const jobs = {dashboard:renderDashboard, scan:renderScanTable, board:renderBoard, docs:renderDocTable,
+    reports:renderReports, calendar:renderCalendar, map:renderMap};
+  new Set(['dashboard','scan','board','docs','reports',CURVIEW]).forEach(v=>{
+    const fn = jobs[v]; if(!fn) return;
+    try{ fn(); }catch(err){ console.warn('refreshDocViews: '+v, err); }
+  });
+}
 function table(head, rows){
   return '<table><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+
     rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
@@ -1187,6 +1273,7 @@ function renderScan(){
   $('#scanFilterVehicle').innerHTML = '<option value="">รถทุกคัน</option>'+vehicleOptions($('#scanFilterVehicle').value,false);
   renderScanVehicleInfo();
   renderScanTable();
+  closeSuggest();
   setTimeout(()=>$('#scanInput').focus(),80);
 }
 function renderScanVehicleInfo(){
@@ -1200,17 +1287,118 @@ function renderScanVehicleInfo(){
     ' • สถานะวันนี้: '+esc(st.status)+ (st.booking? ' ('+esc(st.booking.depart)+' - '+esc(st.booking.back)+' → '+esc(st.booking.province)+')':'') +
     (v.note? ' • หมายเหตุ: '+esc(v.note):'');
 }
-function flash(kind,msg){
+function flash(kind,msg,keep){
   $('#scanFlash').innerHTML = '<div class="flash '+kind+'">'+msg+'</div>';
-  clearTimeout(flash._t); flash._t=setTimeout(()=>{ $('#scanFlash').innerHTML=''; }, 6000);
+  clearTimeout(flash._t);
+  /* keep = ค้างไว้จนกว่าจะยิงใบถัดไป — ใช้กับข้อความที่มีปุ่มให้กดต่อ */
+  if(!keep) flash._t=setTimeout(()=>{ $('#scanFlash').innerHTML=''; }, 6000);
 }
-$('#scanForm').onsubmit = e => {
-  e.preventDefault();
-  const code = $('#scanInput').value.trim();
+/* ---------- ช่องรับเลขที่เอกสาร: ยิงบาร์โค้ด / พิมพ์เอง / เลือกจากรายการ ----------
+   • ยิงบาร์โค้ด : เครื่องสแกนพิมพ์เร็วแล้วส่ง Enter → บันทึกตามที่ยิงมาทันที
+   • พิมพ์เอง    : พิมพ์แล้วกด Enter หรือกดปุ่ม "บันทึกสถานะ"
+   • เลือกเอง    : พิมพ์บางส่วนเพื่อกรอง หรือกดปุ่ม ▾ เพื่อดูรายการทั้งหมด แล้วคลิก / กดลูกศร + Enter
+   หมายเหตุ: sugIdx เริ่มที่ -1 เสมอ เพื่อไม่ให้ Enter จากเครื่องสแกนไปเลือกรายการที่ไฮไลต์อยู่ */
+const SUG_MAX = 50;
+let sugList = [], sugIdx = -1, sugTotal = 0, sugTimer = null;
+
+function docsMatching(q){
+  const t = String(q||'').trim().toLowerCase();
+  const hit = DB.docs.filter(d => !t ||
+    (d.docNo+' '+(d.custName||'')+' '+(d.custCode||'')+' '+(d.province||'')).toLowerCase().indexOf(t)>-1);
+  const rank = d => { const n=String(d.docNo).toLowerCase();
+    return !t ? 1 : n===t ? 0 : n.indexOf(t)===0 ? 1 : n.indexOf(t)>-1 ? 2 : 3; };
+  hit.sort((a,b)=> rank(a)-rank(b) ||
+    String(b.docDate||'').localeCompare(String(a.docDate||'')) ||
+    String(a.docNo).localeCompare(String(b.docNo)));
+  sugTotal = hit.length;
+  return hit.slice(0,SUG_MAX);
+}
+function renderSuggest(){
+  const box = $('#scanSuggest');
+  /* พิมพ์เลขที่ที่ยังไม่มีในระบบ → มีแถวให้กดเพิ่มเข้าระบบได้เลย ไม่ต้องนำเข้าไฟล์ก่อน */
+  const typed = $('#scanInput').value.trim();
+  const exact = typed && DB.docs.some(x=>String(x.docNo).toLowerCase()===typed.toLowerCase());
+  const addRow = (typed && !exact) ?
+    '<div class="sg sg-add" data-addnew>'+
+      '<div class="sg-main">+ เพิ่มเอกสารใหม่ "'+esc(typed)+'"</div>'+
+      '<div class="sg-sub">คีย์เข้าระบบแล้วบันทึกสถานะทันที (เติมชื่อลูกค้า/ที่อยู่ทีหลังได้)</div></div>' : '';
+  if(!sugList.length){
+    box.innerHTML = addRow + '<div class="sg-note">'+(typed? 'ไม่พบเลขที่เอกสารนี้ในระบบ'
+      : 'ยังไม่มีข้อมูลเอกสาร — พิมพ์เลขที่เอกสารในช่องด้านบนเพื่อคีย์เพิ่มเองได้เลย')+'</div>';
+    return;
+  }
+  box.innerHTML = addRow + sugList.map((d,i)=>
+    '<div class="sg'+(i===sugIdx?' on':'')+'" role="option" aria-selected="'+(i===sugIdx)+'" data-sug="'+i+'">'+
+      '<div class="sg-main">'+esc(d.docNo)+'<span class="badge '+statusClass(d.status)+'">'+esc(d.status)+'</span></div>'+
+      '<div class="sg-sub">'+esc(d.custName||'-')+' • '+
+        esc([d.tambon,d.amphoe,d.province].filter(Boolean).join(' / ')||'-')+' • '+thDate(d.docDate)+
+        (d.vehicleId? ' • รถ '+esc(d.vehicleId):'')+'</div></div>').join('') +
+    (sugTotal>sugList.length? '<div class="sg-note">แสดง '+sugList.length+' จาก '+sugTotal+
+      ' รายการ — พิมพ์เพิ่มเพื่อกรองให้แคบลง</div>':'');
+}
+function openSuggest(q){
+  sugList = docsMatching(q==null? $('#scanInput').value : q);
+  sugIdx = -1;
+  renderSuggest();
+  $('#scanSuggest').classList.remove('hidden');
+  $('#scanInput').setAttribute('aria-expanded','true');
+}
+function closeSuggest(){
+  clearTimeout(sugTimer);
+  sugIdx = -1; sugList = [];
+  const box = $('#scanSuggest'); if(box){ box.classList.add('hidden'); box.innerHTML=''; }
+  const inp = $('#scanInput'); if(inp) inp.setAttribute('aria-expanded','false');
+}
+function suggestOpen(){ return !$('#scanSuggest').classList.contains('hidden'); }
+function moveSuggest(step){
+  if(!suggestOpen()){ openSuggest(); if(step>0) return; }
+  if(!sugList.length) return;
+  sugIdx = sugIdx + step;
+  if(sugIdx < -1) sugIdx = sugList.length-1;
+  if(sugIdx >= sugList.length) sugIdx = -1;   /* วนกลับมาที่ช่องพิมพ์ */
+  renderSuggest();
+  const el = $('#scanSuggest .sg.on'); if(el && el.scrollIntoView) el.scrollIntoView({block:'nearest'});
+}
+function pickSuggest(i){
+  const d = sugList[i]; if(!d) return;
+  const no = d.docNo;
+  closeSuggest();
+  commitScan(no);
+}
+$('#scanInput').oninput = () => {
+  clearTimeout(sugTimer);
+  /* หน่วงเล็กน้อย เครื่องสแกนที่พิมพ์รัวแล้วส่ง Enter จะไม่เห็นรายการกระพริบ */
+  sugTimer = setTimeout(()=>openSuggest(), 130);
+};
+$('#scanInput').onkeydown = e => {
+  if(e.key==='ArrowDown'){ e.preventDefault(); moveSuggest(1); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); moveSuggest(-1); }
+  else if(e.key==='Escape'){ if(suggestOpen()){ e.preventDefault(); closeSuggest(); } }
+  else if(e.key==='Enter' && suggestOpen() && sugIdx>=0){ e.preventDefault(); pickSuggest(sugIdx); }
+};
+$('#scanInput').onblur = () => setTimeout(closeSuggest, 160);
+/* กัน blur ของช่องพิมพ์ไม่ให้ไปปิดรายการที่ปุ่มนี้เพิ่งเปิด */
+$('#scanPick').onmousedown = e => e.preventDefault();
+$('#scanPick').onclick = () => {
+  if(suggestOpen()) closeSuggest(); else openSuggest();
+  $('#scanInput').focus();
+};
+/* ใช้ mousedown เพื่อไม่ให้ blur ปิดรายการก่อนที่คลิกจะติด */
+$('#scanSuggest').onmousedown = e => {
+  const add = e.target.closest('[data-addnew]');
+  if(add){ const no=$('#scanInput').value.trim(); e.preventDefault(); closeSuggest(); addDocFromScan(no); return; }
+  const row = e.target.closest('[data-sug]'); if(!row) return;
+  e.preventDefault(); pickSuggest(+row.dataset.sug);
+};
+
+/* บันทึกสถานะเอกสาร 1 ใบ — ใช้ร่วมกันทั้งยิงบาร์โค้ด พิมพ์เอง และเลือกจากรายการ */
+function commitScan(code){
+  code = String(code||'').trim();
+  closeSuggest();
   $('#scanInput').value=''; $('#scanInput').focus();
   if(!code) return;
   const d = DB.docs.find(x=>String(x.docNo).toLowerCase()===code.toLowerCase());
-  if(!d){ flash('err','ไม่พบเลขที่เอกสาร "'+esc(code)+'" ในระบบ — กรุณานำเข้าข้อมูลจาก Excel หรือ SQL Server ก่อน'); return; }
+  if(!d){ askAddDoc(code); return; }
   const st = $('#scanStatus').value, vid = $('#scanVehicle').value;
   d.status = st;
   if(vid) d.vehicleId = vid;
@@ -1219,8 +1407,49 @@ $('#scanForm').onsubmit = e => {
   save();
   flash('ok','บันทึกแล้ว: '+esc(d.docNo)+' — '+esc(d.custName)+' → <b>'+esc(st)+'</b>'+(vid?' (รถ '+esc(vid)+')':'')+
     '<br><span style="font-weight:400">'+esc([d.tambon,d.amphoe,d.province].filter(Boolean).join(' / '))+'</span>');
-  renderScanTable();
+  refreshDocViews();
+}
+$('#scanForm').onsubmit = e => {
+  e.preventDefault();
+  commitScan($('#scanInput').value);
 };
+
+/* ยิง/คีย์เลขที่ยังไม่มีในระบบ → ให้เพิ่มเข้าระบบได้เลย ไม่ต้องไปนำเข้า Excel ก่อน
+   • เพิ่มแล้วบันทึกทันที : สร้างเอกสารใหม่ด้วยสถานะ/รถที่เลือกไว้ด้านบน (เติมรายละเอียดทีหลังได้)
+   • กรอกรายละเอียด      : เปิดฟอร์มเอกสารพร้อมเติมเลขที่ให้แล้ว */
+function askAddDoc(code){
+  const near = docsMatching(code).slice(0,5);
+  flash('err','ยังไม่มีเลขที่เอกสาร "'+esc(code)+'" ในระบบ — คีย์เพิ่มเองได้เลย'+
+    (near.length? '<br><span style="font-weight:400">ใกล้เคียง: '+near.map(x=>esc(x.docNo)).join(', ')+'</span>':'')+
+    '<div class="flash-actions">'+
+      '<button class="primary sm" type="button" data-adddoc="'+esc(code)+'">+ เพิ่มแล้วบันทึกสถานะทันที</button>'+
+      '<button class="outline sm" type="button" data-adddocfull="'+esc(code)+'">กรอกรายละเอียดเอกสาร</button>'+
+      '<button class="link" type="button" data-adddocno>ยกเลิก</button>'+
+    '</div>', true);
+  const box = $('#scanFlash');
+  box.querySelector('[data-adddoc]').onclick = () => { addDocFromScan(code); };
+  box.querySelector('[data-adddocfull]').onclick = () => {
+    box.innerHTML='';
+    docForm(null, {docNo:code, docDate:$('#scanDate').value||todayISO(),
+      status:$('#scanStatus').value, vehicleId:$('#scanVehicle').value, source:'คีย์เอง'});
+  };
+  box.querySelector('[data-adddocno]').onclick = () => { box.innerHTML=''; $('#scanInput').focus(); };
+}
+function addDocFromScan(code){
+  code = String(code||'').trim();
+  if(!code) return;
+  if(DB.docs.some(x=>String(x.docNo).toLowerCase()===code.toLowerCase())){ commitScan(code); return; }
+  const st = $('#scanStatus').value, vid = $('#scanVehicle').value, t = nowStamp();
+  DB.docs.push({row:DB.docs.length+1, docNo:code, docDate:$('#scanDate').value||todayISO(),
+    custCode:'', custName:'', address:'', tambon:'', amphoe:'', province:'',
+    vehicleId:vid, status:st, updatedAt:t, updatedBy:USER.username,
+    log:[{t:t, status:st, by:USER.username, vehicleId:vid||''}], source:'คีย์เอง'});
+  save();
+  flash('ok','เพิ่มเอกสารใหม่แล้ว: <b>'+esc(code)+'</b> → <b>'+esc(st)+'</b>'+(vid?' (รถ '+esc(vid)+')':'')+
+    '<br><span style="font-weight:400">ยังไม่มีชื่อลูกค้า/ที่อยู่ — เพิ่มได้ที่เมนู “ข้อมูลเอกสาร” หรือกดแก้ไขในตารางด้านล่าง</span>');
+  $('#scanInput').value=''; $('#scanInput').focus();
+  refreshDocViews();
+}
 function scanFiltered(){
   const date=$('#scanDate').value, vf=$('#scanFilterVehicle').value, sf=$('#scanFilterStatus').value;
   const q=$('#scanSearch').value.trim().toLowerCase();
@@ -1232,7 +1461,11 @@ function renderScanTable(){
   const list = scanFiltered();
   $('#scanCount').textContent = list.length+' รายการ';
   renderScanVehicleInfo();
-  if(!list.length){ $('#scanTable').innerHTML='<div class="empty-state">ไม่พบเอกสารตามเงื่อนไขที่เลือก</div>'; return; }
+  if(!list.length){
+    $('#scanTable').innerHTML='<div class="empty-state">'+(DB.docs.length? 'ไม่พบเอกสารตามเงื่อนไขที่เลือก'
+      : 'ยังไม่มีข้อมูลเอกสาร — ยิงบาร์โค้ดหรือคีย์เลขที่เอกสารที่ช่องด้านบนได้เลย ไม่ต้องนำเข้าไฟล์ก่อน')+'</div>';
+    return;
+  }
   $('#scanTable').innerHTML = table(
     ['เลขที่เอกสาร','วันที่','ลูกค้า','ที่อยู่ / ตำบล-อำเภอ-จังหวัด','รถ','สถานะ','อัปเดตสถานะ'],
     list.map(d=>{
@@ -1250,12 +1483,87 @@ function renderScanTable(){
     const d=DB.docs[+e.target.dataset.setstatus]; d.status=e.target.value;
     d.updatedAt=nowStamp(); d.updatedBy=USER.username;
     d.log=d.log||[]; d.log.push({t:d.updatedAt,status:d.status,by:USER.username,vehicleId:d.vehicleId||''});
-    save(); renderScanTable();
+    save(); refreshDocViews();
   });
   $$('#scanTable [data-setveh]').forEach(sel=>sel.onchange=e=>{
-    DB.docs[+e.target.dataset.setveh].vehicleId=e.target.value; save(); renderScanTable();
+    DB.docs[+e.target.dataset.setveh].vehicleId=e.target.value; save(); refreshDocViews();
   });
 }
+
+/* ============================================================
+   BOARD — จอแสดงผลสถานะเอกสาร (เอาไว้เปิดค้างไว้หน้าคลัง/หน้าจอทีวี)
+   • เลือกวันที่เอกสารได้ หรือกด "ทุกวัน" เพื่อดูทั้งหมด
+   • ปุ่ม "อัปเดตข้อมูล" อ่านข้อมูลล่าสุดจากเครื่องใหม่ (เผื่อยิงบาร์โค้ดจากอีกแท็บ/อีกหน้าต่าง)
+     และมีอัปเดตเองทุก 15 วินาที
+   • เอกสารสถานะ "จัดเสร็จแล้ว" = พร้อมขึ้นรถ → แถวเป็นสีเหลืองและกระพริบ
+   ============================================================ */
+const BOARD_ORDER = {'จัดเสร็จแล้ว':0,'ยังไม่จัด':1,'ส่งแล้ว':2,'ถึงมือลูกค้าแล้ว':3};
+const BOARD_EVERY = 15000;
+let boardHtml = '';
+$('#boardDate').onchange = () => renderBoard(true);
+$('#btnBoardAll').onclick = () => { $('#boardDate').value=''; renderBoard(true); };
+$('#btnBoardRefresh').onclick = () => { reloadFromStore(); renderBoard(true); };
+$('#btnBoardFull').onclick = () => {
+  const el = $('#v-board');
+  if(document.fullscreenElement){ document.exitFullscreen(); return; }
+  if(el.requestFullscreen) el.requestFullscreen().catch(()=>alert('เบราว์เซอร์ไม่อนุญาตให้แสดงเต็มจอ'));
+  else alert('เบราว์เซอร์นี้ไม่รองรับการแสดงผลเต็มจอ');
+};
+
+/* อ่าน DB ใหม่จาก localStorage — ใช้ตอนกดอัปเดต หรือเมื่อแท็บอื่นในเครื่องเดียวกันบันทึกข้อมูล */
+function reloadFromStore(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return;
+    const d = JSON.parse(raw);
+    if(d && d.docs) DB = d;
+  }catch(e){ console.warn('reloadFromStore', e); }
+}
+window.addEventListener('storage', e => {
+  if(e.key !== KEY || !USER) return;
+  reloadFromStore();
+  refreshDocViews();
+});
+
+function boardList(){
+  const date = $('#boardDate').value;
+  const ord = s => (BOARD_ORDER[s]===undefined? 9 : BOARD_ORDER[s]);
+  return DB.docs.filter(d => !date || d.docDate===date).slice()
+    .sort((a,b)=> ord(a.status)-ord(b.status) || String(a.docNo).localeCompare(String(b.docNo)));
+}
+function renderBoard(force){
+  const list = boardList(), date = $('#boardDate').value;
+  const c = s => list.filter(d=>d.status===s).length;
+  $('#boardDayLabel').textContent = date ? '• ' + thFull(date) : '• ทุกวัน';
+  $('#boardSum').innerHTML = [
+    ['ทั้งหมด', list.length, 'all'],
+    ['ยังไม่จัด', c('ยังไม่จัด'), 'none'],
+    ['จัดเสร็จแล้ว', c('จัดเสร็จแล้ว'), 'ready'],
+    ['ส่งแล้ว', c('ส่งแล้ว'), 'sent'],
+    ['ถึงมือลูกค้าแล้ว', c('ถึงมือลูกค้าแล้ว'), 'done']
+  ].map(x=>'<div class="bs '+x[2]+'"><b>'+x[1]+'</b><span>'+x[0]+'</span></div>').join('');
+
+  const html = list.length ? table(['เลขที่เอกสาร','วันที่เอกสาร','สถานะเอกสาร'],
+    list.map(d=>['<span class="board-no">'+esc(d.docNo)+'</span>',
+      '<span class="board-date">'+thDate(d.docDate)+'</span>',
+      '<span class="board-st '+statusClass(d.status)+'">'+esc(d.status)+'</span>']))
+    : '<div class="empty-state">'+(date? 'ไม่มีเอกสารของวันที่ '+thFull(date)
+        : 'ยังไม่มีข้อมูลเอกสาร — ยิงบาร์โค้ดหรือคีย์เลขที่เอกสารที่หน้า “ยิงบาร์โค้ด” ได้เลย')+'</div>';
+
+  /* เขียนทับเฉพาะตอนข้อมูลเปลี่ยน ไม่งั้นแถวที่กระพริบจะถูกรีเซ็ตทุกครั้งที่อัปเดตอัตโนมัติ */
+  if(force || html !== boardHtml){
+    boardHtml = html;
+    $('#boardTable').innerHTML = html;
+    /* ใส่คลาสให้แถว "จัดเสร็จแล้ว" (table() สร้างเฉพาะ td จึงมาเติมทีหลัง) */
+    const rows = $$('#boardTable tbody tr');
+    list.forEach((d,i)=>{ if(rows[i] && d.status==='จัดเสร็จแล้ว') rows[i].classList.add('row-ready'); });
+  }
+  const n = new Date();
+  $('#boardStamp').textContent = 'อัปเดตล่าสุด ' + pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
+}
+setInterval(()=>{
+  if(CURVIEW==='board' && $('#boardAuto').checked){ reloadFromStore(); renderBoard(); }
+}, BOARD_EVERY);
 
 /* ============================================================
    CALENDAR
@@ -1460,17 +1768,18 @@ function renderDocTable(){
       '<button class="link" data-editdoc="'+esc(d.docNo)+'">แก้ไข</button>'+
       '<button class="link" data-hist="'+esc(d.docNo)+'">ประวัติ</button>'+
       '<button class="link" style="color:var(--red)" data-deldoc="'+esc(d.docNo)+'">ลบ</button>'])
-  ) : '<div class="empty-state">ยังไม่มีข้อมูลเอกสาร — นำเข้าจาก Excel หรือเชื่อมต่อ SQL Server ที่แท็บด้านบน</div>';
+  ) : '<div class="empty-state">ยังไม่มีข้อมูลเอกสาร — กด “+ เพิ่มเอกสาร” เพื่อคีย์เอง หรือนำเข้าจาก Excel / SQL Server ที่แท็บด้านบน</div>';
   $$('#docTable [data-editdoc]').forEach(b=>b.onclick=()=>docForm(DB.docs.find(x=>x.docNo===b.dataset.editdoc)));
   $$('#docTable [data-hist]').forEach(b=>b.onclick=()=>docHistory(DB.docs.find(x=>x.docNo===b.dataset.hist)));
   $$('#docTable [data-deldoc]').forEach(b=>b.onclick=()=>{
     if(!confirm('ลบเอกสาร '+b.dataset.deldoc+' ?')) return;
-    DB.docs=DB.docs.filter(x=>x.docNo!==b.dataset.deldoc); save(); renderDocTable();
+    DB.docs=DB.docs.filter(x=>x.docNo!==b.dataset.deldoc); save(); refreshDocViews();
   });
 }
 $('#btnAddDoc').onclick = ()=>docForm(null);
-function docForm(d){
-  const e = d || {row:DB.docs.length+1,docNo:'',docDate:todayISO(),custCode:'',custName:'',address:'',tambon:'',amphoe:'',province:'',status:'ยังไม่จัด',vehicleId:''};
+function docForm(d, preset){
+  const e = d || Object.assign({row:DB.docs.length+1,docNo:'',docDate:todayISO(),custCode:'',custName:'',
+    address:'',tambon:'',amphoe:'',province:'',status:'ยังไม่จัด',vehicleId:''}, preset||{});
   openModal('<h3>'+(d?'แก้ไขเอกสาร':'เพิ่มเอกสาร')+'</h3>'+
     '<div class="row2"><div class="field"><label>เลขที่เอกสาร *</label><input id="dfNo" value="'+esc(e.docNo)+'"'+(d?' readonly':'')+'></div>'+
     '<div class="field"><label>วันที่เอกสาร</label><input type="date" id="dfDate" value="'+esc(e.docDate)+'"></div></div>'+
@@ -1498,10 +1807,10 @@ function docForm(d){
     const rec = {row:e.row, docNo:no, docDate:$('#dfDate').value, custCode:$('#dfCode').value.trim(),
       custName:$('#dfName').value.trim(), address:$('#dfAddr').value.trim(), tambon:$('#dfTam').value.trim(),
       amphoe:$('#dfAmp').value.trim(), province:$('#dfProv').value, vehicleId:$('#dfVeh').value, status:$('#dfStatus').value,
-      updatedAt:nowStamp(), updatedBy:USER.username, log:(d&&d.log)||[], source:(d&&d.source)||'กรอกเอง'};
+      updatedAt:nowStamp(), updatedBy:USER.username, log:(d&&d.log)||[], source:(d&&d.source)||(preset&&preset.source)||'กรอกเอง'};
     rec.log.push({t:rec.updatedAt,status:rec.status,by:USER.username,vehicleId:rec.vehicleId});
     if(d) Object.assign(d,rec); else DB.docs.push(rec);
-    save(); closeModal(); renderDocTable();
+    save(); closeModal(); refreshDocViews();
   };
 }
 function docHistory(d){
@@ -1522,7 +1831,7 @@ $('#btnExportDocs').onclick = () => {
 $('#btnClearDocs').onclick = () => {
   if(!isAdmin()){ alert('เฉพาะผู้ดูแลระบบเท่านั้น'); return; }
   if(!confirm('ล้างข้อมูลเอกสารทั้งหมด ('+DB.docs.length+' รายการ) ?')) return;
-  DB.docs=[]; save(); renderDocTable();
+  DB.docs=[]; save(); refreshDocViews();
 };
 $('#btnTemplate').onclick = () => {
   download('KanBarcode-template.csv', toCSV(
@@ -1642,7 +1951,7 @@ function commitImport(){
   save(); pendingRows=null;
   $('#importPreview').innerHTML='';
   $('#importMsg').innerHTML='<div class="notice ok">นำเข้าสำเร็จ — เพิ่มใหม่ <b>'+added+'</b> รายการ, อัปเดต <b>'+updated+'</b> รายการ</div>';
-  renderDocTable();
+  refreshDocViews();
 }
 
 /* --- SQL Server --- */
@@ -1893,7 +2202,7 @@ $('#btnAddUser').onclick = () => userForm(null);
 
 function userForm(u){
   if(!isAdmin()){ alert('เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขได้'); return; }
-  const e = u || {email:'', full_name:'', role:'user', active:true, perms:{dashboard:true, scan:true}};
+  const e = u || {email:'', full_name:'', role:'user', active:true, perms:{dashboard:true, scan:true, board:true}};
   openModal('<h3>' + (u?'แก้ไขผู้ใช้งาน':'เพิ่มผู้ใช้งาน') + '</h3>' +
     (u ? '' : '<div class="notice">ระบบจะสร้างบัญชีใหม่ใน Supabase Auth ให้ทันที — แจ้งอีเมลและรหัสผ่านชั่วคราวนี้ให้ผู้ใช้ แล้วให้เขาเปลี่ยนรหัสผ่านเองภายหลัง</div>') +
     '<div class="row2"><div class="field"><label>อีเมล *</label>' +
