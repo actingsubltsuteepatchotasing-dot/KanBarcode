@@ -1,0 +1,65 @@
+{
+  "_readme": [
+    "คัดลอกไฟล์นี้เป็น sync-config.json แล้วใส่ค่าจริง (sync-config.json ถูก .gitignore ไว้แล้ว)",
+    "จากนั้นสั่ง  node sync-sql.js --once  เพื่อลองยิงหนึ่งรอบ",
+    "ถ้าผ่าน ค่อยดับเบิลคลิก sync-start.bat ให้รันค้างไว้"
+  ],
+
+  "everyMinutes": 30,
+
+  "sql": {
+    "_readme": "ค่าเชื่อมต่อ SQL Server — ชุดเดียวกับที่กรอกใน Excel",
+    "server": "bcs-server",
+    "port": "1433",
+    "database": "kowann58",
+    "auth": "sql",
+    "_auth": "sql = กรอก user/password ตามปกติ | ntlm = ล็อกอินด้วยบัญชี Windows (ใส่ domain ด้วย)",
+    "domain": "",
+    "user": "sa",
+    "password": "ใส่รหัสผ่านตรงนี้"
+  },
+
+  "supabase": {
+    "_readme": [
+      "url กับ key ถ้าเว้นไว้ จะอ่านจาก .env.local (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)",
+      "email/password = บัญชีในระบบ KanBarcode ที่มีสิทธิ์เมนู 'ข้อมูลเอกสาร' (แนะนำให้สร้างบัญชีแยกไว้ใช้กับตัวดึงนี้)",
+      "หรือใส่ serviceKey (service_role) แทน email/password ก็ได้ — ห้ามเอาคีย์นั้นไปใส่ในหน้าเว็บเด็ดขาด"
+    ],
+    "url": "https://mxjdzpfxndspwdlobxha.supabase.co",
+    "key": "sb_publishable_5xHBUCW8Ttf9QEDIAbQRtw_qRC8fNIj",
+    "email": "sync@example.com",
+    "password": "ใส่รหัสผ่านบัญชีนั้น",
+    "serviceKey": ""
+  },
+
+  "jobs": [
+    {
+      "name": "เอกสารจัดส่ง kowann58",
+      "enabled": true,
+      "target": "documents",
+      "_target": "documents = ข้อมูลเอกสาร | vehicles = รถและคนขับ",
+      "view": "dbo.V_DeliveryDocument",
+      "_view": "ชื่อ View/Table ที่จะดึง — หรือใส่ \"query\" เป็น SQL เต็ม ๆ แทนก็ได้",
+      "top": 5000,
+      "columns": {
+        "_readme": "ระบุเองเฉพาะคอลัมน์ที่ระบบจับคู่ให้เองไม่ได้ ซ้ายคือชื่อในระบบ ขวาคือชื่อคอลัมน์จริงใน SQL",
+        "docNo": "DocNo",
+        "docDate": "DocDate",
+        "custCode": "CustCode",
+        "custName": "CustName",
+        "address": "Address"
+      }
+    },
+    {
+      "name": "รถและคนขับ",
+      "enabled": false,
+      "target": "vehicles",
+      "view": "dbo.V_Vehicle",
+      "columns": {
+        "id": "VehicleCode",
+        "plate": "LicensePlate",
+        "driver": "DriverName"
+      }
+    }
+  ]
+}
