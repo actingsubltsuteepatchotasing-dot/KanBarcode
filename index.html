@@ -586,6 +586,7 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
               <button class="danger" id="btnSqlDelete">Delete</button>
               <button class="outline" id="btnSqlSave">Save</button>
               <button class="link" id="btnSqlNew">+ สร้างการเชื่อมต่อใหม่</button>
+              <button class="link" id="btnSqlSeed" title="เพิ่มฐานข้อมูลที่บริษัทใช้อยู่กลับเข้ารายการ">เพิ่มรายการตั้งต้น</button>
               <span style="flex:1"></span>
               <button class="primary" id="btnSqlUse">ใช้การเชื่อมต่อนี้ →</button>
               <button class="outline" id="btnSqlConnect">เลือกฐานข้อมูลอื่น</button>
@@ -2283,6 +2284,31 @@ $('#btnSqlBack0').onclick = () => sqlStep(1);
    หนึ่งรายการ = หนึ่งฐานข้อมูล/บริษัท เลือกจากตารางแล้วกด "ใช้การเชื่อมต่อนี้" ได้เลย */
 let SQL_CONN_ID = null;
 
+/* ฐานข้อมูลที่บริษัทใช้อยู่ — ใส่ไว้ให้ตั้งแต่แรก ทุกเครื่องจะได้ไม่ต้องมานั่งพิมพ์เอง
+   (ชื่อผู้ใช้/รหัสผ่านให้กรอกเองที่หน้าเว็บ แล้วกด Save) */
+const SQL_CONN_SEED = [
+  {db:'BC',       name:'BC',       server:'BCS-SERVER'},
+  {db:'kan',      name:'kan',      server:'bcs-server'},
+  {db:'kowann',   name:'kowann',   server:'bcs-server'},
+  {db:'kowann58', name:'kowann58', server:'bcs-server'},
+  {db:'tka',      name:'tka',      server:'bcs-server'},
+  {db:'kan58',    name:'kan58',    server:'bcs-server'}
+];
+/* เพิ่มรายการตั้งต้นที่ยังไม่มี (เทียบจาก server+database) — เรียกซ้ำได้ ไม่เกิดรายการซ้ำ */
+function addSeedConns(){
+  const list = Array.isArray(DB.sqlConns) ? DB.sqlConns : (DB.sqlConns = []);
+  const api = (DB.sql && DB.sql.api) || '/api/sqlserver';
+  let added = 0;
+  SQL_CONN_SEED.forEach(c=>{
+    const dup = list.some(x => String(x.server||'').toLowerCase()===c.server.toLowerCase() &&
+                               String(x.db||'').toLowerCase()===c.db.toLowerCase());
+    if(dup) return;
+    list.push({id:uid('CN'), name:c.name, server:c.server, port:'1433', db:c.db,
+      user:'', pass:'', savePass:false, provider:'SQLOLEDB', api:api, view:''});
+    added++;
+  });
+  return added;
+}
 function sqlConns(){
   if(!Array.isArray(DB.sqlConns)) DB.sqlConns = [];
   /* ครั้งแรกครั้งเดียว: ยกค่าที่เคยกรอกไว้แบบเดี่ยว ๆ ขึ้นมาเป็นรายการแรกให้เลย
@@ -2294,6 +2320,12 @@ function sqlConns(){
         port:DB.sql.port||'1433', db:DB.sql.db||'', user:DB.sql.user||'', pass:DB.sql.pass||'',
         savePass:!!DB.sql.savePass, provider:'SQLOLEDB', api:DB.sql.api||'/api/sqlserver', view:DB.sql.view||''});
     }
+    saveLocal();
+  }
+  /* เติมรายการตั้งต้นให้ครั้งเดียวเช่นกัน — ลบทิ้งแล้วไม่กลับมาเอง แต่กดปุ่มเรียกคืนได้ */
+  if(!DB.sqlConnsSeeded){
+    DB.sqlConnsSeeded = true;
+    addSeedConns();
     saveLocal();
   }
   return DB.sqlConns;
@@ -2347,6 +2379,11 @@ $('#btnSqlDelete').onclick = () => {
   loadSqlForm({});
   renderSqlConns();
   sqlMsg('ok','ลบการเชื่อมต่อแล้ว');
+};
+$('#btnSqlSeed').onclick = () => {
+  const n = addSeedConns();
+  save(); renderSqlConns();
+  sqlMsg(n? 'ok':'warn', n? ('เพิ่มรายการตั้งต้นแล้ว '+n+' รายการ') : 'รายการตั้งต้นมีอยู่ครบแล้ว');
 };
 $('#btnSqlNew').onclick = () => {
   SQL_CONN_ID = null;
