@@ -27,6 +27,60 @@
 const fs = require('fs');
 const path = require('path');
 const sql = require('mssql');
+/* ------------------------------------------------------------
+   หาไอพีของชื่อเครื่องก่อนต่อ
+   Windows: ชื่อเครื่องในวง LAN อย่าง "bcs-server" มักไม่มีใน DNS
+   แต่หาเจอผ่าน NetBIOS/LLMNR — ซึ่ง getaddrinfo ของ Node คืน
+   EBUSY ออกมาแทนที่จะหาเจอ (Failed to connect ... getaddrinfo EBUSY)
+   จึงถอยไปถาม ping ที่ใช้กลไกเดียวกับที่ Windows Explorer ใช้แทน
+   ------------------------------------------------------------ */
+const dns = require('dns');
+const { execFile } = require('child_process');
+
+function isIp(h) { return /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h.indexOf(':') > -1; }
+
+function pingLookup(host) {
+  return new Promise(resolve => {
+    execFile('ping', ['-n', '1', '-4', '-w', '1500', host], { timeout: 6000, windowsHide: true },
+      (err, stdout) => {
+        const m = String(stdout || '').match(/\[(\d{1,3}(?:\.\d{1,3}){3})\]/) ||
+                  String(stdout || '').match(/(\d{1,3}(?:\.\d{1,3}){3})/);
+        resolve(m ? m[1] : null);
+      });
+  });
+}
+
+const HOST_CACHE = new Map();   /* จำผลไว้ ไม่ต้องรอ DNS ใหม่ทุกครั้ง */
+
+async function resolveHost(host) {
+  host = String(host || '').trim();
+  if (!host || isIp(host)) return host;
+  if (HOST_CACHE.has(host)) return HOST_CACHE.get(host);
+  const ip = await lookupHost(host);
+  HOST_CACHE.set(host, ip);
+  return ip;
+}
+async function lookupHost(host) {
+  try {
+    const r = await dns.promises.lookup(host, { family: 4 });
+    if (r && r.address) return r.address;
+  } catch (e) { /* หาไม่เจอทาง DNS — ลองทางอื่นต่อ */ }
+  if (process.platform === 'win32') {
+    const ip = await pingLookup(host);
+    if (ip) return ip;
+  }
+  return host;   /* ปล่อยให้ไดรเวอร์ลองเอง จะได้เห็น error จริง */
+}
+
+/* แปล error ตอนหาเครื่องไม่เจอ ให้บอกทางแก้ไปเลย */
+function hostError(err, host) {
+  const m = String((err && err.message) || err);
+  if (/EBUSY|ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(m)) {
+    return 'หาเครื่อง "' + host + '" ไม่เจอในเครือข่าย (' + m + ')' +
+      ' — ลองใส่เป็นเลขไอพีตรง ๆ แทนชื่อเครื่อง เช็คไอพีได้ด้วยคำสั่ง  ping ' + host;
+  }
+  return m;
+}
 
 const ROOT = __dirname;
 const CONFIG_FILE = path.join(ROOT, 'sync-config.json');
@@ -217,17 +271,14 @@ function sqlConfig(c) {
 async function readSql(cfg, job) {
   const c = Object.assign({}, cfg.sql, job.sql || {});
   if (!c.database) throw new Error('งาน "' + job.name + '" ยังไม่ได้ระบุ database');
-  const pool = await new sql.ConnectionPool(sqlConfig(c)).connect();
-  try {
+  return withPool(c, async pool => {
     const q = job.query || ('SELECT TOP ' + (Number(job.top) || 5000) + ' * FROM ' + safeName(job.view));
     const r = await pool.request().query(q);
     const columns = r.recordset && r.recordset.columns
       ? Object.keys(r.recordset.columns)
       : (r.recordset[0] ? Object.keys(r.recordset[0]) : []);
     return { columns, rows: r.recordset };
-  } finally {
-    try { await pool.close(); } catch (e) { /* ปิดไม่ได้ก็ปล่อย */ }
-  }
+  });
 }
 function safeName(v) {
   const s = String(v || '').trim().replace(/[\[\]]/g, '');
@@ -346,7 +397,11 @@ async function askPick(rl, title, items, dfltIndex) {
   }
 }
 async function withPool(c, fn) {
-  const pool = await new sql.ConnectionPool(sqlConfig(c)).connect();
+  const conf = sqlConfig(c);
+  conf.server = await resolveHost(conf.server);
+  let pool;
+  try { pool = await new sql.ConnectionPool(conf).connect(); }
+  catch (err) { throw new Error(hostError(err, c.server)); }
   try { return await fn(pool); }
   finally { try { await pool.close(); } catch (e) { /* ปิดไม่ได้ก็ปล่อย */ } }
 }
