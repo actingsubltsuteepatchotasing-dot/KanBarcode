@@ -229,6 +229,16 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
 .wiz .st.on b{background:var(--navy);color:#fff}
 .wiz .st.done{border-color:#bbf7d0;color:var(--green)}
 .wiz .st.done b{background:#dcfce7;color:var(--green)}
+/* ตารางรายการการเชื่อมต่อ + กล่องรายละเอียด (หน้าตาแบบ Create Connection ของโปรแกรมบัญชี) */
+.conn-list{border:1px solid var(--line);border-radius:9px;max-height:210px;overflow:auto;margin-bottom:16px}
+.conn-list table{font-size:13px}
+.conn-list tbody tr{cursor:pointer}
+.conn-list tbody tr.sel td{background:#1d4ed8;color:#fff}
+.conn-list tbody tr.sel td b,.conn-list tbody tr.sel td .subtle{color:#fff}
+.conn-list td{padding:7px 12px}
+.proto{border:1px solid var(--line);border-radius:9px;padding:14px 16px 16px;margin:0}
+.proto legend{font-size:12.5px;font-weight:600;color:var(--muted);padding:0 6px}
+.conn-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:14px}
 .pick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
 .pick-card{border:1px solid var(--line);border-radius:var(--radius);padding:15px;background:#fff;
   cursor:pointer;text-align:left;transition:.12s}
@@ -542,30 +552,45 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
           <div class="pick-grid" id="sqlTargets"></div>
         </div>
 
-        <!-- ---- ขั้นที่ 2: เซิร์ฟเวอร์ ---- -->
+        <!-- ---- ขั้นที่ 2: รายการการเชื่อมต่อ (Create Connection) ---- -->
         <div class="panel hidden" id="sqlStep1">
-          <div class="panel-title"><h3>2. เซิร์ฟเวอร์ที่จะเชื่อมต่อ <span class="subtle" id="sqlTargetName"></span></h3>
+          <div class="panel-title"><h3>2. เลือกการเชื่อมต่อ <span class="subtle" id="sqlTargetName"></span></h3>
             <button class="link" id="btnSqlBack0">← เปลี่ยนปลายทาง</button></div>
-          <div class="row2">
-            <div class="field"><label>Server / Host</label><input id="sqlServer" placeholder="เช่น 192.168.1.10 หรือ SRV\\SQLEXPRESS">
-              <div class="hint">ชื่อเดียวกับที่กรอกใน Excel ช่อง Server name</div></div>
-            <div class="field"><label>Port</label><input id="sqlPort" placeholder="1433"></div>
-          </div>
-          <div class="row2">
-            <div class="field"><label>Username</label><input id="sqlUser" placeholder="sa" autocomplete="off"></div>
-            <div class="field"><label>Password</label><input id="sqlPass" type="password" placeholder="••••••••" autocomplete="new-password"></div>
-          </div>
-          <div class="field"><label>API Endpoint</label><input id="sqlApi" placeholder="/api/sqlserver">
-            <div class="hint">ตัวกลางที่ต่อไปยัง SQL Server แทนเบราว์เซอร์ — ถ้า SQL Server อยู่ในวง LAN
-              ให้รัน <span class="mono">start-lan.bat</span> บนเครื่องในวงเดียวกัน แล้วเปิดเว็บจากเครื่องนั้น</div></div>
-          <div class="chk"><input type="checkbox" id="sqlSavePass"><label for="sqlSavePass" style="margin:0">จำรหัสผ่านไว้ในเครื่องนี้</label></div>
-          <input id="sqlDb" class="hidden">
-          <input id="sqlView" class="hidden">
-          <div class="modal-actions" style="justify-content:flex-start">
-            <button class="primary" id="btnSqlConnect">เชื่อมต่อ →</button>
-            <button class="outline" id="btnSqlTest">ทดสอบเชื่อมต่อ</button>
-            <button class="outline" id="btnSqlSave">บันทึกค่า</button>
-          </div>
+
+          <div class="conn-list tbl-wrap" id="sqlConnTable"></div>
+
+          <fieldset class="proto">
+            <legend>รายละเอียดการเชื่อมต่อ <span class="subtle" id="sqlConnMode"></span></legend>
+            <div class="row2">
+              <div class="field"><label>Provider</label>
+                <select id="sqlProvider"><option value="SQLOLEDB">Microsoft OLE DB Provider for SQL Server</option></select></div>
+              <div class="field"><label>Database</label><input id="sqlDb" placeholder="เช่น kowann58"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Server / DSN</label><input id="sqlServer" placeholder="เช่น bcs-server, 192.168.1.10 หรือ SRV\\SQLEXPRESS">
+                <div class="hint">ชื่อเดียวกับที่กรอกใน Excel ช่อง Server name</div></div>
+              <div class="field"><label>Port</label><input id="sqlPort" placeholder="1433"></div>
+            </div>
+            <div class="field"><label>Name / Remark (ชื่อบริษัทหรือคำอธิบาย)</label><input id="sqlName" placeholder="เช่น kowann58"></div>
+            <div class="row2">
+              <div class="field"><label>Username</label><input id="sqlUser" placeholder="sa" autocomplete="off"></div>
+              <div class="field"><label>Password</label><input id="sqlPass" type="password" placeholder="••••••••" autocomplete="new-password"></div>
+            </div>
+            <div class="field"><label>API Endpoint</label><input id="sqlApi" placeholder="/api/sqlserver">
+              <div class="hint">ตัวกลางที่ต่อไปยัง SQL Server แทนเบราว์เซอร์ — ถ้า SQL Server อยู่ในวง LAN
+                ให้รัน <span class="mono">start-lan.bat</span> บนเครื่องในวงเดียวกัน แล้วเปิดเว็บจากเครื่องนั้น</div></div>
+            <div class="chk"><input type="checkbox" id="sqlSavePass"><label for="sqlSavePass" style="margin:0">จำรหัสผ่านไว้ในเครื่องนี้</label></div>
+            <input id="sqlView" class="hidden">
+            <div class="conn-actions">
+              <button class="outline" id="btnSqlTest">Test Connect</button>
+              <button class="danger" id="btnSqlDelete">Delete</button>
+              <button class="outline" id="btnSqlSave">Save</button>
+              <button class="link" id="btnSqlNew">+ สร้างการเชื่อมต่อใหม่</button>
+              <span style="flex:1"></span>
+              <button class="primary" id="btnSqlUse">ใช้การเชื่อมต่อนี้ →</button>
+              <button class="outline" id="btnSqlConnect">เลือกฐานข้อมูลอื่น</button>
+            </div>
+          </fieldset>
         </div>
 
         <!-- ---- ขั้นที่ 3: ฐานข้อมูล ---- -->
@@ -2231,6 +2256,7 @@ let SQL_TARGET = 'docs';
 function renderSqlConn(){
   loadSqlForm();
   renderSqlTargets();
+  renderSqlConns();
 }
 function renderSqlTargets(){
   $('#sqlTargets').innerHTML = Object.keys(SQL_TARGETS).map(k=>{
@@ -2252,19 +2278,108 @@ function pickSqlTarget(k){
 }
 $('#btnSqlBack0').onclick = () => sqlStep(1);
 
-function loadSqlForm(){
-  const s=DB.sql||{};
+/* ---------- รายการการเชื่อมต่อที่บันทึกไว้ (แบบหน้าต่าง Create Connection ของโปรแกรมบัญชี) ----------
+   เก็บไว้ในเครื่องนี้เท่านั้น (localStorage) ไม่ขึ้นคลาวด์ เพราะมีรหัสผ่าน SQL Server อยู่ด้วย
+   หนึ่งรายการ = หนึ่งฐานข้อมูล/บริษัท เลือกจากตารางแล้วกด "ใช้การเชื่อมต่อนี้" ได้เลย */
+let SQL_CONN_ID = null;
+
+function sqlConns(){
+  if(!Array.isArray(DB.sqlConns)) DB.sqlConns = [];
+  /* ครั้งแรกครั้งเดียว: ยกค่าที่เคยกรอกไว้แบบเดี่ยว ๆ ขึ้นมาเป็นรายการแรกให้เลย
+     (มีธงกำกับ ไม่งั้นพอลบรายการสุดท้ายทิ้ง มันจะโผล่กลับมาใหม่) */
+  if(!DB.sqlConnsInit){
+    DB.sqlConnsInit = true;
+    if(!DB.sqlConns.length && DB.sql && DB.sql.server){
+      DB.sqlConns.push({id:uid('CN'), name:DB.sql.name||DB.sql.db||DB.sql.server, server:DB.sql.server,
+        port:DB.sql.port||'1433', db:DB.sql.db||'', user:DB.sql.user||'', pass:DB.sql.pass||'',
+        savePass:!!DB.sql.savePass, provider:'SQLOLEDB', api:DB.sql.api||'/api/sqlserver', view:DB.sql.view||''});
+    }
+    saveLocal();
+  }
+  return DB.sqlConns;
+}
+function renderSqlConns(){
+  const list = sqlConns();
+  $('#sqlConnTable').innerHTML = list.length ? table(
+    ['Database','Company Name / Remark','Server / DSN','Provider'],
+    list.map(c=>['<b>'+esc(c.db||'-')+'</b>', esc(c.name||'-'),
+      esc(c.server||'-')+(c.port&&c.port!=='1433'? '<span class="subtle">,'+esc(c.port)+'</span>':''),
+      '<span class="subtle">'+esc(c.provider||'SQLOLEDB')+'</span>']))
+    : '<div class="empty-state">ยังไม่มีการเชื่อมต่อที่บันทึกไว้ — กรอกด้านล่างแล้วกด Save</div>';
+  $$('#sqlConnTable tbody tr').forEach((tr,i)=>{
+    tr.classList.toggle('sel', list[i].id===SQL_CONN_ID);
+    tr.onclick = () => selectSqlConn(list[i].id);
+  });
+  $('#sqlConnMode').textContent = SQL_CONN_ID ? '• กำลังแก้ไขรายการที่เลือก' : '• รายการใหม่';
+}
+function selectSqlConn(id){
+  const c = sqlConns().find(x=>x.id===id); if(!c) return;
+  SQL_CONN_ID = id;
+  loadSqlForm(c);
+  renderSqlConns();
+  sqlMsg('ok','เลือกการเชื่อมต่อ <b>'+esc(c.name||c.db)+'</b> — กด "ใช้การเชื่อมต่อนี้" เพื่อไปต่อ');
+}
+function formConn(){
+  return {id:SQL_CONN_ID, name:$('#sqlName').value.trim(), server:$('#sqlServer').value.trim(),
+    port:$('#sqlPort').value.trim()||'1433', db:$('#sqlDb').value.trim(), user:$('#sqlUser').value.trim(),
+    pass:$('#sqlSavePass').checked?$('#sqlPass').value:'', savePass:$('#sqlSavePass').checked,
+    provider:$('#sqlProvider').value, api:$('#sqlApi').value.trim()||'/api/sqlserver', view:$('#sqlView').value.trim()};
+}
+$('#btnSqlSave').onclick = () => {
+  const c = formConn();
+  if(!c.server){ sqlMsg('bad','กรุณากรอก Server / DSN ก่อนบันทึก'); return; }
+  if(!c.name) c.name = c.db || c.server;
+  const list = sqlConns();
+  const ex = list.find(x=>x.id===SQL_CONN_ID);
+  if(ex){ Object.assign(ex, c); }
+  else { c.id = uid('CN'); list.push(c); SQL_CONN_ID = c.id; }
+  saveSqlForm();
+  renderSqlConns();
+  sqlMsg('ok','บันทึกการเชื่อมต่อ <b>'+esc(c.name)+'</b> แล้ว');
+};
+$('#btnSqlDelete').onclick = () => {
+  const c = sqlConns().find(x=>x.id===SQL_CONN_ID);
+  if(!c){ sqlMsg('warn','เลือกรายการที่จะลบจากตารางด้านบนก่อน'); return; }
+  if(!confirm('ลบการเชื่อมต่อ "'+(c.name||c.db)+'" ?')) return;
+  DB.sqlConns = sqlConns().filter(x=>x.id!==c.id);
+  SQL_CONN_ID = null;
+  save();
+  loadSqlForm({});
+  renderSqlConns();
+  sqlMsg('ok','ลบการเชื่อมต่อแล้ว');
+};
+$('#btnSqlNew').onclick = () => {
+  SQL_CONN_ID = null;
+  loadSqlForm({api:$('#sqlApi').value.trim()||'/api/sqlserver'});
+  renderSqlConns();
+  sqlMsg('ok','กรอกรายละเอียดการเชื่อมต่อใหม่ แล้วกด Save');
+  $('#sqlServer').focus();
+};
+/* ใช้การเชื่อมต่อที่กรอก/เลือกอยู่ — มี Database แล้วข้ามไปเลือกตารางได้เลย */
+$('#btnSqlUse').onclick = async () => {
+  const c = formConn();
+  if(!c.server){ sqlMsg('bad','กรุณากรอก Server / DSN'); return; }
+  saveSqlForm();
+  /* มีชื่อฐานข้อมูลอยู่แล้ว → ข้ามขั้นเลือกฐานข้อมูลไปเลือกตารางได้เลย */
+  if(c.db) sqlLoadObjects(c.db); else $('#btnSqlConnect').click();
+};
+
+function loadSqlForm(c){
+  const s = c || DB.sql || {};
   $('#sqlServer').value=s.server||''; $('#sqlPort').value=s.port||'1433'; $('#sqlDb').value=s.db||'';
   $('#sqlUser').value=s.user||''; $('#sqlPass').value=s.savePass?(s.pass||''):''; $('#sqlView').value=s.view||'';
   $('#sqlApi').value=s.api||'/api/sqlserver'; $('#sqlSavePass').checked=!!s.savePass;
+  $('#sqlName').value=s.name||''; $('#sqlProvider').value=s.provider||'SQLOLEDB';
 }
 function saveSqlForm(){
-  DB.sql = {server:$('#sqlServer').value.trim(), port:$('#sqlPort').value.trim(), db:$('#sqlDb').value.trim(),
-    user:$('#sqlUser').value.trim(), pass:$('#sqlSavePass').checked?$('#sqlPass').value:'', view:$('#sqlView').value.trim(),
-    api:$('#sqlApi').value.trim()||'/api/sqlserver', savePass:$('#sqlSavePass').checked};
+  const c = formConn();
+  DB.sql = {server:c.server, port:c.port, db:c.db, user:c.user, pass:c.pass, view:c.view,
+    api:c.api, savePass:c.savePass, name:c.name, provider:c.provider};
+  /* แก้ค่าอยู่บนรายการไหน อัปเดตรายการนั้นตามไปด้วย */
+  const ex = SQL_CONN_ID && sqlConns().find(x=>x.id===SQL_CONN_ID);
+  if(ex) Object.assign(ex, c, {id:ex.id});
   save();
 }
-$('#btnSqlSave').onclick = () => { saveSqlForm(); sqlMsg('ok','บันทึกค่าการเชื่อมต่อแล้ว'); };
 function sqlMsg(kind,msg){ $('#sqlMsg').innerHTML='<div class="notice '+(kind==='ok'?'ok':kind==='bad'?'bad':'warn')+'">'+msg+'</div>'; }
 
 /* ไฮไลต์ขั้นตอนที่ทำอยู่ + เปิด/ปิดกล่องของแต่ละขั้น
@@ -2333,8 +2448,9 @@ $('#btnSqlBack1').onclick = () => sqlStep(2);
 $('#btnSqlBack2').onclick = () => sqlStep(3);
 
 /* ---------- ขั้นที่ 2 → 3 : ขอรายชื่อ Table / View ---------- */
-$('#btnSqlUseDb').onclick = async () => {
-  const db = $('#sqlDbManual').value.trim() || $('#sqlDbList').value;
+$('#btnSqlUseDb').onclick = () => sqlLoadObjects($('#sqlDbManual').value.trim() || $('#sqlDbList').value);
+async function sqlLoadObjects(db){
+  db = String(db||'').trim();
   if(!db){ sqlMsg('bad','กรุณาเลือกหรือพิมพ์ชื่อฐานข้อมูล'); return; }
   $('#sqlDb').value = db;
   const d = await sqlCall('objects', {database:db}, 'กำลังอ่านรายชื่อ Table / View ใน '+esc(db)+' ...');
@@ -2342,10 +2458,11 @@ $('#btnSqlUseDb').onclick = async () => {
   SQL_OBJS = d.objects||[];
   $('#sqlDbName').textContent = '• ' + db;
   saveSqlForm();
+  renderSqlConns();
   sqlStep(4);
   renderSqlObjects();
-  sqlMsg('ok','พบ '+SQL_OBJS.length+' รายการใน '+esc(db)+' — เลือก Table หรือ View ที่เก็บเลขที่เอกสาร');
-};
+  sqlMsg('ok','พบ '+SQL_OBJS.length+' รายการใน '+esc(db)+' — เลือก Table หรือ View ที่จะนำเข้า');
+}
 $('#sqlObjSearch').oninput = renderSqlObjects;
 $('#sqlObjType').onchange = renderSqlObjects;
 function sqlObjFiltered(){
