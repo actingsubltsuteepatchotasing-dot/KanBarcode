@@ -98,6 +98,13 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
+/* สร้างไฟล์ทางลัด .url ให้ก๊อปไปวางหน้าจอเครื่องอื่นในวงได้เลย ไม่ต้องจำไอพี */
+function writeShortcut(ip) {
+  const file = path.join(ROOT, 'เปิด KanBarcode.url');
+  const body = '[InternetShortcut]\r\nURL=http://' + ip + ':' + PORT + '\r\nIconIndex=0\r\n';
+  try { fs.writeFileSync(file, body, 'utf8'); return file; } catch (e) { return null; }
+}
+
 server.listen(PORT, () => {
   const ips = [];
   const nets = os.networkInterfaces();
@@ -110,12 +117,14 @@ server.listen(PORT, () => {
   console.log('  เครื่องนี้      : http://localhost:' + PORT);
   ips.forEach(ip => console.log('  เครื่องอื่นในวง : http://' + ip + ':' + PORT));
   console.log('');
+  if (ips.length) {
+    const sc = writeShortcut(ips[0]);
+    if (sc) console.log('ทางลัดสำหรับแจกเครื่องอื่น: ก๊อปไฟล์ "เปิด KanBarcode.url" ไปวางหน้าจอได้เลย');
+  }
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    console.log('Supabase : ตั้งค่าแล้ว' + (USED_ENV_FILE ? ' (อ่านจากไฟล์ .env.local)' : ' (จากตัวแปรแวดล้อม)'));
+    console.log('Supabase : ตั้งค่าจาก' + (USED_ENV_FILE ? 'ไฟล์ .env.local' : 'ตัวแปรแวดล้อม'));
   } else {
-    console.log('Supabase : ยังไม่ได้ตั้งค่า — คัดลอก .env.local.example เป็น .env.local');
-    console.log('           แล้วใส่ NEXT_PUBLIC_SUPABASE_ANON_KEY ก่อนสั่ง npm start');
-    console.log('           (ไม่ตั้งก็ใช้ได้ แต่ต้องกรอก Project URL / anon key เองที่หน้าล็อกอินทุกเครื่อง)');
+    console.log('Supabase : ใช้ค่าที่ฝังไว้ในหน้าเว็บ (ไม่ต้องตั้งอะไรเพิ่ม)');
   }
   console.log('');
   console.log('หน้าเชื่อมต่อ SQL Server: เมนู "ข้อมูลเอกสาร" → แท็บ "เชื่อมต่อ SQL Server"');

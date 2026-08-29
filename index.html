@@ -811,8 +811,12 @@ DB = load();
    เว็บนี้ไม่มี build step ตัวแปร NEXT_PUBLIC_* จึงไม่ถูกฝังตอน build
    แบบ Next.js — ต้องอ่านตอน runtime ผ่าน serverless function เท่านั้น
    ------------------------------------------------------------ */
-const SUPABASE_URL = '';
-const SUPABASE_ANON_KEY = '';
+/* ค่าสำรองที่ฝังไว้ในโค้ด — ใช้เมื่อไม่มี /api/config (เช่นรันในวง LAN แบบไม่ตั้ง .env.local
+   หรือเปิดไฟล์ index.html ตรง ๆ) จะได้ไม่ต้องตั้งค่าอะไรเลยทุกเครื่อง
+   anon / publishable key เป็นคีย์สาธารณะโดยเจตนา ความปลอดภัยจริงอยู่ที่ Row Level Security
+   ถ้าเปลี่ยนโปรเจกต์ Supabase ให้แก้สองบรรทัดนี้ (หรือใช้ Environment Variables ซึ่งมาก่อนเสมอ) */
+const SUPABASE_URL = 'https://mxjdzpfxndspwdlobxha.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_5xHBUCW8Ttf9QEDIAbQRtw_qRC8fNIj';
 const CONFIG_API = '/api/config';
 
 const CFG_KEY  = KEY + '.supabase';
@@ -841,9 +845,11 @@ async function serverCfg(){
   }catch(e){}
   return null;
 }
+/* ลำดับความสำคัญ: Environment Variables ของเซิร์ฟเวอร์ → ค่าที่กรอกเองในเครื่อง → ค่าฝังในโค้ด */
 async function resolveCfg(){
-  if(SUPABASE_URL && SUPABASE_ANON_KEY) return {url:SUPABASE_URL, key:SUPABASE_ANON_KEY, from:'code'};
-  return (await serverCfg()) || localCfg();
+  const code = (SUPABASE_URL && SUPABASE_ANON_KEY)
+    ? {url:SUPABASE_URL, key:SUPABASE_ANON_KEY, from:'code'} : null;
+  return (await serverCfg()) || localCfg() || code;
 }
 function makeClient(cfg){
   return window.supabase.createClient(cfg.url, cfg.key, {auth:{
@@ -2587,7 +2593,9 @@ $('#btnReset').onclick = () => {
 
   SBCFG = await resolveCfg();
   /* ค่ามาจาก Vercel env หรือฝังในโค้ด → กรอกเองไม่มีผล ซ่อนลิงก์ตั้งค่าไปเลย */
-  if(SBCFG && SBCFG.from !== 'local') $('#btnEditCfg').classList.add('hidden');
+  /* ค่ามาจาก Environment Variables ของเซิร์ฟเวอร์ → กรอกเองไม่มีผล ซ่อนลิงก์ตั้งค่าไปเลย
+     ส่วนค่าฝังในโค้ดยังให้เปลี่ยนได้ เผื่อต้องชี้ไปโปรเจกต์ Supabase อื่น */
+  if(SBCFG && SBCFG.from === 'env') $('#btnEditCfg').classList.add('hidden');
   if(!SBCFG){
     if(CFG_SERVER_ERR){ $('#cfgNote').className = 'notice warn'; $('#cfgNote').textContent = CFG_SERVER_ERR; }
     authPane('cfg'); setTimeout(() => $('#cfgUrl').focus(), 100); return;

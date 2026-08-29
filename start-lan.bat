@@ -23,13 +23,6 @@ if not exist "node_modules\mssql" (
   echo.
 )
 
-if not exist ".env.local" (
-  echo [แจ้งเตือน] ยังไม่มีไฟล์ .env.local
-  echo             คัดลอก .env.local.example เป็น .env.local แล้วใส่ anon key ของ Supabase
-  echo             ถ้าไม่ตั้ง จะต้องกรอก Project URL / anon key เองที่หน้าล็อกอินของทุกเครื่อง
-  echo.
-)
-
 node local-server.js
 echo.
 echo เซิร์ฟเวอร์ปิดแล้ว
