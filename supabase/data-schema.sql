@@ -5,9 +5,9 @@
 --  รันไฟล์นี้ทั้งไฟล์ใน Supabase → SQL Editor → New query → Run
 --  ต้องรัน supabase/schema.sql (ตาราง profiles) ให้ผ่านก่อน
 --
---  ⚠ ไฟล์นี้ "เตรียมที่เก็บ" อย่างเดียว — ตัวเว็บ index.html ยังอ่าน/เขียน
---    localStorage อยู่เหมือนเดิม การย้ายโค้ดฝั่งเว็บมาใช้ตารางพวกนี้
---    เป็นงานอีกก้อนที่ต้องแก้ index.html ตามมา
+--  หน้าเว็บ (index.html) ใช้ตารางพวกนี้จริงแล้ว — vehicles, documents,
+--  document_logs, bookings  ส่วน localStorage เหลือไว้เป็นสำเนาสำรองในเครื่อง
+--  ถ้าอัปเดตเว็บแล้วบันทึกขึ้นคลาวด์ไม่ได้ ให้รันไฟล์นี้ซ้ำอีกรอบ (รันซ้ำได้ไม่เสียข้อมูล)
 -- ============================================================
 
 
@@ -128,6 +128,16 @@ create table if not exists public.document_logs (
 
 create index if not exists document_logs_doc_idx  on public.document_logs (doc_no, changed_at desc);
 create index if not exists document_logs_time_idx on public.document_logs (changed_at desc);
+
+-- กันประวัติบรรทัดเดิมถูกส่งซ้ำจากหลายเครื่อง
+-- หน้าเว็บส่งประวัติแบบ upsert ... on conflict do nothing โดยอ้าง index นี้เป็นเป้า
+-- ⚠ ไม่มี index นี้ = เว็บจะเซฟประวัติสถานะขึ้นคลาวด์ไม่ได้
+update public.document_logs set changed_by = '' where changed_by is null;
+alter table public.document_logs alter column changed_by set default '';
+alter table public.document_logs alter column changed_by set not null;
+
+create unique index if not exists document_logs_uniq
+  on public.document_logs (doc_no, changed_at, status, changed_by);
 
 
 -- ------------------------------------------------------------

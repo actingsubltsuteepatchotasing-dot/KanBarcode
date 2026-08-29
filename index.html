@@ -840,9 +840,40 @@ function sideClient(){
        และมีป้ายสถานะมุมขวาบนให้กดลองใหม่ทันที
      • localStorage ยังถูกเขียนอยู่ ทำหน้าที่เป็นสำเนาสำรองในเครื่อง
 
-   เพิ่มตารางทีละเมนูเพื่อให้ทดสอบได้ — โครงสร้างตารางดูที่
-   supabase/data-schema.sql
+   ตารางที่ซิงก์แล้ว (โครงสร้างดูที่ supabase/data-schema.sql)
+     DB.vehicles ↔ public.vehicles        รถและคนขับ
+     DB.docs     ↔ public.documents       เอกสาร + สถานะที่ยิงบาร์โค้ด
+     DB.bookings ↔ public.bookings        การจองรถในปฏิทิน
+     doc.log     ↔ public.document_logs   ประวัติการเปลี่ยนสถานะ (เพิ่มอย่างเดียว)
+   ยังไม่ซิงก์: DB.mapKey, DB.sql (ค่าตั้งค่าเฉพาะเครื่อง — มีรหัสผ่าน SQL Server อยู่ด้วย)
+
+   ลำดับใน CLOUD สำคัญ: vehicles ต้องขึ้นก่อน เพราะ documents/bookings
+   อ้าง vehicle_id เป็น foreign key
    ============================================================ */
+const CLOUD_CHUNK = 400;   /* ส่งทีละ 400 แถว กัน request ใหญ่เกินตอนนำเข้า Excel ก้อนโต */
+function chunk(arr, n){ const out=[]; for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n)); return out; }
+
+/* 'YYYY-MM-DD HH:MM' (เวลาที่ผู้ใช้เห็น) ↔ timestamptz ของ Postgres
+   ตรึงเป็น UTC ทั้งขาไปขากลับ ค่าที่อ่านกลับมาจึงตรงกับที่ส่งขึ้นไปเป๊ะ ๆ
+   (ใช้เทียบว่าประวัติบรรทัดไหนขึ้นคลาวด์แล้ว) */
+function stampToISO(t){
+  const m = String(t||'').match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+  return m ? m[1]+'T'+m[2]+':00Z' : new Date().toISOString();
+}
+function stampFromISO(s){
+  const m = String(s||'').match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+  return m ? m[1]+' '+m[2] : '';
+}
+/* updated_at ที่ Postgres ใส่ให้ (UTC) → เวลาเครื่องผู้ใช้ */
+function stampLocal(s){
+  if(!s) return '';
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? '' : iso(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+/* ส่ง vehicle_id ที่ยังไม่มีในตาราง vehicles ขึ้นไปไม่ได้ (ติด foreign key)
+   → ถือว่ายังไม่ผูกรถ ดีกว่าปล่อยให้ซิงก์ทั้งก้อนล้มเพราะแถวเดียว */
+function vehRef(id){ return (id && DB.vehicles.some(v=>v.id===id)) ? id : null; }
+
 const CLOUD = {
   /* DB.vehicles ↔ ตาราง public.vehicles */
   vehicles: {
@@ -859,8 +890,106 @@ const CLOUD = {
       driver:r.driver||'', phone:r.phone||'', type:r.type||'',
       capacity:r.capacity||'', note:r.note||'', active:r.active!==false
     })
+  },
+
+  /* DB.docs ↔ ตาราง public.documents — เลขที่เอกสารเป็น primary key */
+  docs: {
+    table: 'documents',
+    pk: 'doc_no',
+    key: d => String(d.docNo),
+    toRow: d => ({
+      doc_no:String(d.docNo), row_no:(d.row===''||d.row==null)? null : (Number(d.row)||null),
+      doc_date:d.docDate||null, cust_code:d.custCode||null, cust_name:d.custName||null,
+      address:d.address||null, tambon:d.tambon||null, amphoe:d.amphoe||null, province:d.province||null,
+      status:(STATUS.indexOf(d.status)>-1? d.status : 'ยังไม่จัด'),
+      vehicle_id:vehRef(d.vehicleId), source:d.source||null, updated_by:d.updatedBy||null
+    }),
+    fromRow: r => ({
+      row:r.row_no||'', docNo:r.doc_no, docDate:r.doc_date||'',
+      custCode:r.cust_code||'', custName:r.cust_name||'', address:r.address||'',
+      tambon:r.tambon||'', amphoe:r.amphoe||'', province:r.province||'',
+      status:r.status||'ยังไม่จัด', vehicleId:r.vehicle_id||'',
+      updatedAt:stampLocal(r.updated_at), updatedBy:r.updated_by||'',
+      log:[], source:r.source||''
+    })
+  },
+
+  /* DB.bookings ↔ ตาราง public.bookings */
+  bookings: {
+    table: 'bookings',
+    pk: 'id',
+    key: b => b.id,
+    toRow: b => ({
+      id:b.id, vehicle_id:b.vehicleId, trip_date:b.date||null, province:b.province||null,
+      depart:b.depart||null, back_time:b.back||null,
+      status:(VSTATUS.indexOf(b.status)>-1? b.status : 'จองแล้ว'), note:b.note||null
+    }),
+    fromRow: r => ({
+      id:r.id, vehicleId:r.vehicle_id||'', date:r.trip_date||'', province:r.province||'',
+      depart:String(r.depart||'').slice(0,5), back:String(r.back_time||'').slice(0,5),
+      status:r.status||'จองแล้ว', note:r.note||''
+    })
   }
 };
+
+/* ---------- ประวัติสถานะ (public.document_logs) ----------
+   เป็นบันทึกย้อนหลัง จึง "เพิ่มอย่างเดียว" ไม่แก้ไม่ลบ
+   กันซ้ำด้วย unique index (doc_no, changed_at, status, changed_by)
+   ใน supabase/data-schema.sql แล้วส่งแบบ ignoreDuplicates */
+const LOG_TABLE = 'document_logs';
+const LOG_CONFLICT = 'doc_no,changed_at,status,changed_by';
+let LOG_SNAP = {};   /* คีย์ของประวัติที่อยู่บนคลาวด์แล้ว */
+
+function logKey(docNo, l){ return docNo+'|'+stampToISO(l.t)+'|'+(l.status||'')+'|'+(l.by||''); }
+function logRows(){
+  const out = [];
+  (DB.docs||[]).forEach(d => (d.log||[]).forEach(l => out.push({
+    key: logKey(d.docNo, l),
+    row: {doc_no:String(d.docNo), status:l.status||'', changed_by:l.by||'',
+          vehicle_id:l.vehicleId||null, changed_at:stampToISO(l.t)}
+  })));
+  return out;
+}
+async function cloudPullLogs(){
+  const {data, error} = await sb.from(LOG_TABLE).select('*');
+  if(error) throw error;
+  LOG_SNAP = {};
+  const byDoc = {};
+  (data||[]).forEach(r => {
+    const l = {t:stampFromISO(new Date(r.changed_at).toISOString()), status:r.status||'',
+               by:r.changed_by||'', vehicleId:r.vehicle_id||''};
+    (byDoc[r.doc_no] = byDoc[r.doc_no] || []).push(l);
+    LOG_SNAP[logKey(r.doc_no, l)] = 1;
+  });
+  /* รวมของคลาวด์กับของในเครื่อง (ที่อาจยังไม่ได้ส่งขึ้นไป) แล้วตัดบรรทัดซ้ำออก */
+  (DB.docs||[]).forEach(d => {
+    const seen = {}, merged = [];
+    (byDoc[d.docNo]||[]).concat(d.log||[]).forEach(l => {
+      const k = logKey(d.docNo, l);
+      if(seen[k]) return;
+      seen[k] = 1; merged.push(l);
+    });
+    merged.sort((a,b)=>String(a.t).localeCompare(String(b.t)));
+    d.log = merged;
+  });
+}
+async function cloudPushLogs(){
+  const fresh = logRows().filter(x => !LOG_SNAP[x.key]);
+  if(!fresh.length) return 0;
+  for(const part of chunk(fresh, CLOUD_CHUNK)){
+    const rows = part.map(x=>x.row);
+    let {error} = await sb.from(LOG_TABLE).upsert(rows, {onConflict:LOG_CONFLICT, ignoreDuplicates:true});
+    /* ยังไม่ได้รัน unique index จาก data-schema.sql รอบใหม่ → ลงเป็น insert ธรรมดาแทน
+       จะได้ไม่บล็อกการซิงก์ทั้งก้อน (กันซ้ำด้วย LOG_SNAP ฝั่งนี้ ตอนดึงลงมาก็ตัดซ้ำอยู่แล้ว) */
+    if(error && /on conflict|unique or exclusion|42P10/i.test(String((error && error.message) || ''))){
+      const retry = await sb.from(LOG_TABLE).insert(rows);
+      error = retry.error;
+    }
+    if(error) throw error;
+    part.forEach(x => LOG_SNAP[x.key] = 1);
+  }
+  return fresh.length;
+}
 
 const MIG_KEY = KEY + '.migrated';
 let CLOUD_SNAP = {};    /* ชื่อชุดข้อมูล → { pk: json ของแถวที่ซิงก์ไปแล้ว } */
@@ -909,6 +1038,7 @@ async function cloudPull(){
     }
     migMark(name);
   }
+  await cloudPullLogs();
   saveLocal();
   CLOUD_ON = true;
   cloudBadge('ok', 'ข้อมูลตรงกับคลาวด์');
@@ -936,17 +1066,18 @@ async function cloudRun(){
       for(const k in snap) if(!(k in cur))        del.push(k);
       if(!up.length && !del.length) continue;
       cloudBadge('busy', 'กำลังบันทึก...');
-      if(up.length){
-        const {error} = await sb.from(c.table).upsert(up);
+      for(const part of chunk(up, CLOUD_CHUNK)){
+        const {error} = await sb.from(c.table).upsert(part);
         if(error) throw error;
       }
-      if(del.length){
-        const {error} = await sb.from(c.table).delete().in(c.pk, del);
+      for(const part of chunk(del, CLOUD_CHUNK)){
+        const {error} = await sb.from(c.table).delete().in(c.pk, part);
         if(error) throw error;
       }
       CLOUD_SNAP[name] = cur;    /* สำเร็จแล้วค่อยขยับ snapshot */
       sent += up.length + del.length;
     }
+    sent += await cloudPushLogs();   /* ประวัติต้องส่งหลังเอกสาร เพราะอ้าง doc_no */
   }catch(err){ failed = err; }
   CLOUD_BUSY = false;
   if(failed){
