@@ -396,14 +396,44 @@ async function askPick(rl, title, items, dfltIndex) {
     console.log('  ** ใส่หมายเลขระหว่าง 1 ถึง ' + items.length + ' **');
   }
 }
-async function withPool(c, fn) {
+/* กันค้างเงียบ ๆ — งานไหนเกินเวลาที่ให้ ให้เด้ง error ออกมาพร้อมบอกทางแก้ */
+function withTimeout(promise, ms, what) {
+  let t;
+  const timer = new Promise((_, rej) => {
+    t = setTimeout(() => rej(new Error(what + ' ไม่เสร็จภายใน ' + Math.round(ms / 1000) + ' วินาที')), ms);
+  });
+  return Promise.race([promise, timer]).finally(() => clearTimeout(t));
+}
+async function withPool(c, fn, opt) {
+  opt = opt || {};
   const conf = sqlConfig(c);
   conf.server = await resolveHost(conf.server);
+  if (opt.requestTimeout) conf.requestTimeout = opt.requestTimeout;
   let pool;
-  try { pool = await new sql.ConnectionPool(conf).connect(); }
-  catch (err) { throw new Error(hostError(err, c.server)); }
-  try { return await fn(pool); }
-  finally { try { await pool.close(); } catch (e) { /* ปิดไม่ได้ก็ปล่อย */ } }
+  try {
+    pool = await withTimeout(new sql.ConnectionPool(conf).connect(),
+      (conf.connectionTimeout || 15000) + 3000, 'การเชื่อมต่อ ' + c.server);
+  } catch (err) { throw new Error(hostError(err, c.server)); }
+  try {
+    const work = fn(pool);
+    return opt.timeout ? await withTimeout(work, opt.timeout, opt.what || 'คำสั่ง SQL') : await work;
+  } finally {
+    try { await pool.close(); } catch (e) { /* ปิดไม่ได้ก็ปล่อย */ }
+  }
+}
+/* จับเวลาแล้วบอกผลเป็นบรรทัดเดียว จะได้รู้ว่าค้างตรงไหน */
+async function step(label, fn) {
+  const t0 = Date.now();
+  process.stdout.write(label + ' ... ');
+  try {
+    const r = await fn();
+    console.log('เสร็จใน ' + ((Date.now() - t0) / 1000).toFixed(1) + ' วินาที' +
+      (Array.isArray(r) ? ' (' + r.length + ' รายการ)' : ''));
+    return r;
+  } catch (err) {
+    console.log('ไม่สำเร็จ (' + ((Date.now() - t0) / 1000).toFixed(1) + ' วินาที)');
+    throw err;
+  }
 }
 async function listDatabases(c) {
   return withPool(Object.assign({}, c, { database: 'master' }), async pool => {
@@ -411,7 +441,7 @@ async function listDatabases(c) {
       'SELECT name, CASE WHEN database_id <= 4 THEN 1 ELSE 0 END AS is_system ' +
       'FROM sys.databases WHERE state = 0 AND HAS_DBACCESS(name) = 1 ORDER BY is_system, name');
     return r.recordset.map(x => ({ name: x.name, system: !!x.is_system }));
-  });
+  }, { timeout: 30000, requestTimeout: 30000, what: 'การอ่านรายชื่อฐานข้อมูล' });
 }
 async function listObjects(c) {
   return withPool(c, async pool => {
@@ -421,7 +451,7 @@ async function listObjects(c) {
       'FROM sys.objects o JOIN sys.schemas s ON s.schema_id = o.schema_id ' +
       "WHERE o.type IN ('U','V') AND o.is_ms_shipped = 0 ORDER BY [type], s.name, o.name");
     return r.recordset;
-  });
+  }, { timeout: 45000, requestTimeout: 45000, what: 'การอ่านรายชื่อ Table / View' });
 }
 async function peek(c, view) {
   return withPool(c, async pool => {
@@ -430,7 +460,7 @@ async function peek(c, view) {
       ? Object.keys(r.recordset.columns)
       : (r.recordset[0] ? Object.keys(r.recordset[0]) : []);
     return { columns, rows: r.recordset };
-  });
+  }, { timeout: 45000, requestTimeout: 45000, what: 'การอ่านตัวอย่างข้อมูลจาก ' + view });
 }
 
 async function runList() {
@@ -469,8 +499,7 @@ async function runPick() {
 
     /* ---- 2) เลือกฐานข้อมูล ---- */
     console.log('');
-    console.log('กำลังอ่านรายชื่อฐานข้อมูลจาก ' + cfg.sql.server + ' ...');
-    const dbs = await listDatabases(cfg.sql);
+    const dbs = await step('อ่านรายชื่อฐานข้อมูลจาก ' + cfg.sql.server, () => listDatabases(cfg.sql));
     if (!dbs.length) throw new Error('บัญชีนี้ยังไม่เห็นฐานข้อมูลใดเลย');
     const dbIdx = dbs.findIndex(d => d.name === cfg.sql.database);
     const di = await askPick(rl, 'เลือกฐานข้อมูล',
@@ -485,24 +514,38 @@ async function runPick() {
 
     /* ---- 4) เลือก Table / View ---- */
     console.log('');
-    console.log('กำลังอ่านรายชื่อ Table / View ใน ' + cfg.sql.database + ' ...');
-    let objs = await listObjects(cfg.sql);
-    if (!objs.length) throw new Error('ไม่พบ Table หรือ View ในฐานข้อมูลนี้');
-    if (objs.length > 40) {
+    let objs = [];
+    try {
+      objs = await step('อ่านรายชื่อ Table / View ใน ' + cfg.sql.database, () => listObjects(cfg.sql));
+    } catch (err) {
+      console.log('  ** ' + ((err && err.message) || err) + ' **');
+      console.log('  (บัญชีนี้อาจไม่มีสิทธิ์อ่านรายชื่อ หรือฐานข้อมูลใหญ่มาก — พิมพ์ชื่อเองได้เลย)');
+    }
+    let view = null;
+    if (!objs.length) {
+      view = await ask(rl, 'พิมพ์ชื่อ Table / View เอง (เช่น dbo.V_DeliveryDocument)', cfg.sql.view || '');
+      if (!view) throw new Error('ยังไม่ได้ระบุ Table หรือ View');
+    }
+    if (!view && objs.length > 40) {
       const kw = await ask(rl, 'มี ' + objs.length + ' รายการ — พิมพ์คำค้นเพื่อกรอง (Enter = ดูทั้งหมด)', '');
       if (kw) {
         const f = objs.filter(o => (o.schema + '.' + o.name).toLowerCase().indexOf(kw.toLowerCase()) > -1);
         if (f.length) objs = f; else console.log('  ** ไม่พบตามคำค้น แสดงทั้งหมดแทน **');
       }
     }
-    const oi = await askPick(rl, 'เลือก Table หรือ View ที่จะดึง',
-      objs.map(o => '[' + (o.type === 'VIEW' ? 'View ' : 'Table') + '] ' + o.schema + '.' + o.name));
-    const view = objs[oi].schema + '.' + objs[oi].name;
+    if (!view) {
+      const MANUAL = '— พิมพ์ชื่อเอง —';
+      const oi = await askPick(rl, 'เลือก Table หรือ View ที่จะดึง',
+        objs.map(o => '[' + (o.type === 'VIEW' ? 'View ' : 'Table') + '] ' + o.schema + '.' + o.name).concat([MANUAL]));
+      view = (oi === objs.length)
+        ? await ask(rl, 'พิมพ์ชื่อ Table / View (เช่น dbo.V_DeliveryDocument)', '')
+        : objs[oi].schema + '.' + objs[oi].name;
+      if (!view) throw new Error('ยังไม่ได้ระบุ Table หรือ View');
+    }
 
     /* ---- 5) ดูคอลัมน์จริง แล้วจับคู่ ---- */
     console.log('');
-    console.log('กำลังอ่านคอลัมน์ของ ' + view + ' ...');
-    const { columns, rows } = await peek(cfg.sql, view);
+    const { columns, rows } = await step('อ่านคอลัมน์ของ ' + view, () => peek(cfg.sql, view));
     console.log('คอลัมน์ที่พบ: ' + columns.join(', '));
     if (rows[0]) console.log('ตัวอย่างแถวแรก: ' + JSON.stringify(rows[0]).slice(0, 300));
 
@@ -635,6 +678,9 @@ async function runOnce(cfg) {
   }
   saveState(state);
 }
+
+process.on('unhandledRejection', e => log('ผิดพลาด (unhandled): ' + ((e && e.message) || e)));
+process.on('uncaughtException', e => log('ผิดพลาด (uncaught): ' + ((e && e.message) || e)));
 
 (async function main() {
   if (LIST) { try { await runList(); } catch (e) { log('ผิดพลาด: ' + ((e && e.message) || e)); process.exitCode = 1; } return; }
