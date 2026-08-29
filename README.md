@@ -2,6 +2,15 @@
 
 ระบบบันทึกสถานะการส่งสินค้าด้วยเครื่องยิงบาร์โค้ด — **บริษัท เกาอาน จำกัด**
 
+## ลิงก์ใช้งานจริง
+
+**https://kan-barcode.vercel.app** ← ส่งลิงก์นี้ให้ผู้ใช้งาน
+
+อย่าส่งลิงก์แบบ `kan-barcode-git-<branch>-<ทีม>.vercel.app` หรือ `kan-barcode-<ทีม>.vercel.app`
+พวกนั้นเป็น URL ของ deployment ที่ถูก **Vercel Authentication** ป้องกันไว้
+คนที่ไม่ได้ล็อกอินบัญชี Vercel ของเราจะถูกเด้งไปหน้าล็อกอินของ Vercel แทนที่จะเข้าเว็บ
+(ปิดได้ที่ Vercel → Project → Settings → Deployment Protection)
+
 ## เปิดใช้งาน
 
 ระบบ login ใช้ **Supabase** — ต้องตั้งค่าโปรเจกต์ Supabase ก่อนใช้งานครั้งแรก
