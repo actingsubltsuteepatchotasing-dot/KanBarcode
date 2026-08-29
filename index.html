@@ -229,6 +229,14 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
 .wiz .st.on b{background:var(--navy);color:#fff}
 .wiz .st.done{border-color:#bbf7d0;color:var(--green)}
 .wiz .st.done b{background:#dcfce7;color:var(--green)}
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.pick-card{border:1px solid var(--line);border-radius:var(--radius);padding:15px;background:#fff;
+  cursor:pointer;text-align:left;transition:.12s}
+.pick-card:hover{border-color:#a9bcdb;background:#f8fafd}
+.pick-card.on{border-color:var(--navy);background:#f4f7fd}
+.pick-card b{display:block;font-size:14.5px;margin-bottom:4px;color:var(--ink)}
+.pick-card span{font-size:12px;color:var(--muted);display:block}
+.pick-card .cur{display:inline-block;margin-top:8px;font-size:11.5px;color:var(--blue)}
 #sqlObjTable tr{cursor:pointer}
 #sqlObjTable tr.sel td{background:#eef4ff}
 #sqlObjTable td{padding:8px 12px}
@@ -311,6 +319,7 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
       <button data-view="map">⌖ <span>แผนที่การจัดส่ง</span></button>
       <div class="section">จัดการข้อมูล</div>
       <button data-view="docs">▤ <span>ข้อมูลเอกสาร</span></button>
+      <button data-view="sqlconn">⛁ <span>เชื่อมต่อ SQL Server</span></button>
       <button data-view="vehicles">▣ <span>รถและคนขับ</span></button>
       <button data-view="reports">◫ <span>รายงานประจำวัน</span></button>
       <button data-view="users">⚙ <span>สิทธิ์ผู้ใช้งาน</span></button>
@@ -504,71 +513,89 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
         </div>
 
         <div class="tabpage" id="tab-sql">
-          <div class="notice">เชื่อมต่อแบบเดียวกับ Excel → <b>Data</b> → <b>From Database</b> → <b>From SQL Server Database</b><br>
-            กรอกชื่อ Server → เลือก Database → เลือก Table หรือ View → ดูตัวอย่างข้อมูล → นำเข้า</div>
-          <div id="sqlMsg"></div>
-
-          <div class="wiz" id="sqlWiz">
-            <div class="st on" data-step="1"><b>1</b> เซิร์ฟเวอร์</div>
-            <div class="st" data-step="2"><b>2</b> ฐานข้อมูล</div>
-            <div class="st" data-step="3"><b>3</b> ตาราง / วิว</div>
-            <div class="st" data-step="4"><b>4</b> นำเข้า</div>
-          </div>
-
-          <!-- ---- ขั้นที่ 1: เซิร์ฟเวอร์ ---- -->
-          <div class="panel" id="sqlStep1">
-            <div class="panel-title"><h3>1. เซิร์ฟเวอร์ที่จะเชื่อมต่อ</h3></div>
-            <div class="row2">
-              <div class="field"><label>Server / Host</label><input id="sqlServer" placeholder="เช่น 192.168.1.10 หรือ SRV\\SQLEXPRESS">
-                <div class="hint">ชื่อเดียวกับที่กรอกใน Excel ช่อง Server name</div></div>
-              <div class="field"><label>Port</label><input id="sqlPort" placeholder="1433"></div>
-            </div>
-            <div class="row2">
-              <div class="field"><label>Username</label><input id="sqlUser" placeholder="sa" autocomplete="off"></div>
-              <div class="field"><label>Password</label><input id="sqlPass" type="password" placeholder="••••••••" autocomplete="new-password"></div>
-            </div>
-            <div class="field"><label>API Endpoint</label><input id="sqlApi" placeholder="/api/sqlserver">
-              <div class="hint">ตัวกลางที่ต่อไปยัง SQL Server แทนเบราว์เซอร์ — ถ้า SQL Server อยู่ในวง LAN
-                ให้รัน <span class="mono">npm start</span> บนเครื่องในวงเดียวกัน แล้วเปิดเว็บจากเครื่องนั้น</div></div>
-            <div class="chk"><input type="checkbox" id="sqlSavePass"><label for="sqlSavePass" style="margin:0">จำรหัสผ่านไว้ในเครื่องนี้</label></div>
-            <input id="sqlDb" class="hidden">
-            <input id="sqlView" class="hidden">
-            <div class="modal-actions" style="justify-content:flex-start">
-              <button class="primary" id="btnSqlConnect">เชื่อมต่อ →</button>
-              <button class="outline" id="btnSqlTest">ทดสอบเชื่อมต่อ</button>
-              <button class="outline" id="btnSqlSave">บันทึกค่า</button>
-            </div>
-          </div>
-
-          <!-- ---- ขั้นที่ 2: ฐานข้อมูล ---- -->
-          <div class="panel hidden" id="sqlStep2">
-            <div class="panel-title"><h3>2. เลือกฐานข้อมูล</h3>
-              <button class="link" id="btnSqlBack1">← เปลี่ยนเซิร์ฟเวอร์</button></div>
-            <div class="toolbar" style="margin-bottom:0">
-              <select class="grow" id="sqlDbList"></select>
-              <button class="primary sm" id="btnSqlUseDb">เลือกฐานข้อมูลนี้ →</button>
-            </div>
-            <div class="hint" style="margin-top:8px">ไม่เห็นฐานข้อมูลที่ต้องการ? บัญชีที่ใช้ต้องมีสิทธิ์เข้าถึงฐานข้อมูลนั้นก่อน
-              — หรือพิมพ์ชื่อเองแล้วกดปุ่มด้านบนได้ที่ช่องนี้</div>
-            <div class="field" style="margin-top:8px"><input id="sqlDbManual" placeholder="พิมพ์ชื่อฐานข้อมูลเอง (ไม่บังคับ)"></div>
-          </div>
-
-          <!-- ---- ขั้นที่ 3: ตาราง / วิว ---- -->
-          <div class="panel flush hidden" id="sqlStep3">
-            <div class="panel-title"><h3>3. เลือก Table หรือ View <span class="subtle" id="sqlDbName"></span></h3>
-              <button class="link" id="btnSqlBack2">← เปลี่ยนฐานข้อมูล</button></div>
-            <div class="toolbar" style="padding:0 16px">
-              <input class="grow" id="sqlObjSearch" placeholder="ค้นหาชื่อตาราง / วิว">
-              <select id="sqlObjType">
-                <option value="">ทั้งหมด</option><option value="TABLE">เฉพาะ Table</option><option value="VIEW">เฉพาะ View</option>
-              </select>
-              <span class="subtle" id="sqlObjCount"></span>
-            </div>
-            <div class="tbl-wrap" id="sqlObjTable" style="max-height:330px;overflow:auto"></div>
-          </div>
-
-          <div id="sqlPreview"></div>
+          <div class="notice">การเชื่อมต่อ SQL Server ย้ายไปอยู่ที่เมนู <b>เชื่อมต่อ SQL Server</b> แล้ว
+            เพราะตอนนี้เลือกได้ว่าจะนำเข้าไปหน้าไหน (ข้อมูลเอกสาร / รถและคนขับ / ปฏิทินรถ)</div>
+          <button class="primary" data-go="sqlconn">ไปหน้าเชื่อมต่อ SQL Server →</button>
         </div>
+      </section>
+
+      <!-- ===== SQL SERVER ===== -->
+      <section class="view" id="v-sqlconn">
+        <div class="page-head">
+          <div><div class="eyebrow">DATA SOURCE</div><h2>เชื่อมต่อ SQL Server</h2></div>
+        </div>
+        <div class="notice">เชื่อมต่อแบบเดียวกับ Excel → <b>Data</b> → <b>From Database</b> → <b>From SQL Server Database</b><br>
+          เลือกก่อนว่าจะนำเข้าไปหน้าไหน → กรอกชื่อ Server → เลือก Database → เลือก Table หรือ View → ดูตัวอย่าง → นำเข้า</div>
+        <div id="sqlMsg"></div>
+
+        <div class="wiz" id="sqlWiz">
+          <div class="st on" data-step="1"><b>1</b> ปลายทาง</div>
+          <div class="st" data-step="2"><b>2</b> เซิร์ฟเวอร์</div>
+          <div class="st" data-step="3"><b>3</b> ฐานข้อมูล</div>
+          <div class="st" data-step="4"><b>4</b> ตาราง / วิว</div>
+          <div class="st" data-step="5"><b>5</b> นำเข้า</div>
+        </div>
+
+        <!-- ---- ขั้นที่ 1: เลือกหน้าปลายทาง ---- -->
+        <div class="panel" id="sqlStep0">
+          <div class="panel-title"><h3>1. จะนำเข้าข้อมูลไปที่หน้าไหน</h3></div>
+          <div class="pick-grid" id="sqlTargets"></div>
+        </div>
+
+        <!-- ---- ขั้นที่ 2: เซิร์ฟเวอร์ ---- -->
+        <div class="panel hidden" id="sqlStep1">
+          <div class="panel-title"><h3>2. เซิร์ฟเวอร์ที่จะเชื่อมต่อ <span class="subtle" id="sqlTargetName"></span></h3>
+            <button class="link" id="btnSqlBack0">← เปลี่ยนปลายทาง</button></div>
+          <div class="row2">
+            <div class="field"><label>Server / Host</label><input id="sqlServer" placeholder="เช่น 192.168.1.10 หรือ SRV\\SQLEXPRESS">
+              <div class="hint">ชื่อเดียวกับที่กรอกใน Excel ช่อง Server name</div></div>
+            <div class="field"><label>Port</label><input id="sqlPort" placeholder="1433"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Username</label><input id="sqlUser" placeholder="sa" autocomplete="off"></div>
+            <div class="field"><label>Password</label><input id="sqlPass" type="password" placeholder="••••••••" autocomplete="new-password"></div>
+          </div>
+          <div class="field"><label>API Endpoint</label><input id="sqlApi" placeholder="/api/sqlserver">
+            <div class="hint">ตัวกลางที่ต่อไปยัง SQL Server แทนเบราว์เซอร์ — ถ้า SQL Server อยู่ในวง LAN
+              ให้รัน <span class="mono">start-lan.bat</span> บนเครื่องในวงเดียวกัน แล้วเปิดเว็บจากเครื่องนั้น</div></div>
+          <div class="chk"><input type="checkbox" id="sqlSavePass"><label for="sqlSavePass" style="margin:0">จำรหัสผ่านไว้ในเครื่องนี้</label></div>
+          <input id="sqlDb" class="hidden">
+          <input id="sqlView" class="hidden">
+          <div class="modal-actions" style="justify-content:flex-start">
+            <button class="primary" id="btnSqlConnect">เชื่อมต่อ →</button>
+            <button class="outline" id="btnSqlTest">ทดสอบเชื่อมต่อ</button>
+            <button class="outline" id="btnSqlSave">บันทึกค่า</button>
+          </div>
+        </div>
+
+        <!-- ---- ขั้นที่ 3: ฐานข้อมูล ---- -->
+        <div class="panel hidden" id="sqlStep2">
+          <div class="panel-title"><h3>3. เลือกฐานข้อมูล</h3>
+            <button class="link" id="btnSqlBack1">← เปลี่ยนเซิร์ฟเวอร์</button></div>
+          <div class="toolbar" style="margin-bottom:0">
+            <select class="grow" id="sqlDbList"></select>
+            <button class="primary sm" id="btnSqlUseDb">เลือกฐานข้อมูลนี้ →</button>
+          </div>
+          <div class="hint" style="margin-top:8px">ไม่เห็นฐานข้อมูลที่ต้องการ? บัญชีที่ใช้ต้องมีสิทธิ์เข้าถึงฐานข้อมูลนั้นก่อน
+            — หรือพิมพ์ชื่อเองในช่องนี้แล้วกดปุ่มด้านบน</div>
+          <div class="field" style="margin-top:8px"><input id="sqlDbManual" placeholder="พิมพ์ชื่อฐานข้อมูลเอง (ไม่บังคับ)"></div>
+        </div>
+
+        <!-- ---- ขั้นที่ 4: ตาราง / วิว ---- -->
+        <div class="panel flush hidden" id="sqlStep3">
+          <div class="panel-title"><h3>4. เลือก Table หรือ View <span class="subtle" id="sqlDbName"></span></h3>
+            <button class="link" id="btnSqlBack2">← เปลี่ยนฐานข้อมูล</button></div>
+          <div class="toolbar" style="padding:0 16px">
+            <input class="grow" id="sqlObjSearch" placeholder="ค้นหาชื่อตาราง / วิว">
+            <select id="sqlObjType">
+              <option value="">ทั้งหมด</option><option value="TABLE">เฉพาะ Table</option><option value="VIEW">เฉพาะ View</option>
+            </select>
+            <span class="subtle" id="sqlObjCount"></span>
+          </div>
+          <div class="tbl-wrap" id="sqlObjTable" style="max-height:330px;overflow:auto"></div>
+        </div>
+
+        <div id="sqlPreview"></div>
       </section>
 
       <!-- ===== VEHICLES ===== -->
@@ -651,7 +678,8 @@ const STATUS = ['ยังไม่จัด','จัดเสร็จแล้
 const VSTATUS = ['ว่าง','จองแล้ว','เดินทางอยู่'];
 const MENUS = [
   ['dashboard','ภาพรวม'],['scan','ยิงบาร์โค้ด'],['board','จอแสดงผล'],['calendar','ปฏิทินรถ'],['map','แผนที่การจัดส่ง'],
-  ['docs','ข้อมูลเอกสาร'],['vehicles','รถและคนขับ'],['reports','รายงานประจำวัน'],['users','สิทธิ์ผู้ใช้งาน']
+  ['docs','ข้อมูลเอกสาร'],['sqlconn','เชื่อมต่อ SQL Server'],['vehicles','รถและคนขับ'],
+  ['reports','รายงานประจำวัน'],['users','สิทธิ์ผู้ใช้งาน']
 ];
 
 /* พิกัดจังหวัด สำหรับปักหมุดบน Google Maps */
@@ -1337,7 +1365,8 @@ function go(view){
   const label = (MENUS.find(m=>m[0]===view)||['','']) [1];
   $('#crumb').textContent = 'KanBarcode / ' + label;
   ({dashboard:renderDashboard, scan:renderScan, board:renderBoard, calendar:renderCalendar, map:renderMap,
-    docs:renderDocs, vehicles:renderVehicles, reports:renderReports, users:renderUsers}[view]||function(){})();
+    docs:renderDocs, sqlconn:renderSqlConn, vehicles:renderVehicles, reports:renderReports,
+    users:renderUsers}[view]||function(){})();
   window.scrollTo(0,0);
 }
 $('#nav').onclick = e => { const b=e.target.closest('button[data-view]'); if(b) go(b.dataset.view); };
@@ -2019,6 +2048,49 @@ const HEAD_MAP = {
 };
 const HEAD_TH = {row:'แถว', docNo:'เลขที่เอกสาร', docDate:'วันที่เอกสาร', custCode:'รหัสลูกค้า',
   custName:'ชื่อลูกค้า', address:'ที่อยู่', tambon:'ตำบล', amphoe:'อำเภอ', province:'จังหวัด'};
+
+/* ---- จับคู่คอลัมน์สำหรับ "รถและคนขับ" ---- */
+const VEH_MAP = {
+  id:['รหัสรถ','รหัส','vehicleid','vehicle_id','vehiclecode','carid','carcode','id','code'],
+  brand:['ยี่ห้อ','brand','make'],
+  model:['รุ่น','model'],
+  plate:['ทะเบียน','เลขทะเบียน','ทะเบียนรถ','plate','licenseplate','license','regno','registration'],
+  driver:['คนขับ','ชื่อคนขับ','พนักงานขับรถ','driver','drivername'],
+  phone:['เบอร์โทร','โทรศัพท์','เบอร์','phone','tel','mobile','telephone'],
+  type:['ประเภทรถ','ประเภท','ชนิดรถ','type','vehicletype','cartype'],
+  capacity:['น้ำหนักบรรทุก','บรรทุก','ความจุ','capacity','load','payload'],
+  note:['หมายเหตุ','note','remark','description']
+};
+const VEH_TH = {id:'รหัสรถ', brand:'ยี่ห้อ', model:'รุ่น', plate:'ทะเบียน', driver:'คนขับ',
+  phone:'เบอร์โทร', type:'ประเภทรถ', capacity:'น้ำหนักบรรทุก', note:'หมายเหตุ'};
+
+/* ---- จับคู่คอลัมน์สำหรับ "การจองรถ" (ปฏิทินรถ) ---- */
+const BK_MAP = {
+  id:['รหัสการจอง','เลขที่จอง','bookingid','booking_id','bookingno','id'],
+  vehicleId:['รหัสรถ','รถ','ทะเบียน','vehicleid','vehicle_id','carid','plate'],
+  date:['วันที่','วันที่เดินทาง','วันเดินทาง','date','tripdate','trip_date','bookingdate'],
+  province:['จังหวัด','ปลายทาง','province','destination'],
+  depart:['เวลาออก','ออกเดินทาง','เวลาไป','depart','departtime','starttime','timeout'],
+  back:['เวลากลับ','กลับถึง','back','backtime','returntime','endtime','timein'],
+  status:['สถานะ','status'],
+  note:['หมายเหตุ','note','remark']
+};
+const BK_TH = {id:'รหัสการจอง', vehicleId:'รถ', date:'วันที่เดินทาง', province:'ปลายทาง',
+  depart:'เวลาออก', back:'เวลากลับ', status:'สถานะ', note:'หมายเหตุ'};
+
+/* จับคู่หัวคอลัมน์กับตารางที่ระบุ (ใช้ร่วมกันทุกปลายทาง) */
+function mapWith(m, h){
+  const k=String(h||'').trim().toLowerCase().replace(/\s+/g,'');
+  for(const f in m) if(m[f].some(x=>x.toLowerCase().replace(/\s+/g,'')===k)) return f;
+  return null;
+}
+/* '07:30:00' / Date / '7:30' → '07:30' */
+function normTime(v){
+  if(v==null||v==='') return '';
+  if(v instanceof Date) return pad(v.getHours())+':'+pad(v.getMinutes());
+  const m=String(v).trim().match(/(\d{1,2}):(\d{2})/);
+  return m ? pad(m[1])+':'+m[2] : '';
+}
 function mapHeader(h){
   const k=String(h||'').trim().toLowerCase().replace(/\s+/g,'');
   for(const f in HEAD_MAP) if(HEAD_MAP[f].some(x=>x.toLowerCase().replace(/\s+/g,'')===k)) return f;
@@ -2133,6 +2205,53 @@ function commitImport(){
    ============================================================ */
 let SQL_OBJS = [], SQL_SEL = null;
 
+/* ปลายทางที่นำเข้าได้ — ตรงกับหน้าที่มีอยู่ในระบบ */
+const SQL_TARGETS = {
+  docs: {
+    label:'ข้อมูลเอกสาร', menu:'docs',
+    hint:'เลขที่เอกสาร วันที่ ลูกค้า ที่อยู่ — ใช้กับหน้ายิงบาร์โค้ดและจอแสดงผล',
+    map:HEAD_MAP, th:HEAD_TH, need:['docNo'],
+    count: () => DB.docs.length + ' รายการในระบบ'
+  },
+  vehicles: {
+    label:'รถและคนขับ', menu:'vehicles',
+    hint:'รหัสรถ ยี่ห้อ ทะเบียน คนขับ เบอร์โทร',
+    map:VEH_MAP, th:VEH_TH, need:['id'],
+    count: () => DB.vehicles.length + ' คันในระบบ'
+  },
+  bookings: {
+    label:'การจองรถ (ปฏิทินรถ)', menu:'calendar',
+    hint:'รถ วันที่เดินทาง เวลาไป-กลับ ปลายทาง',
+    map:BK_MAP, th:BK_TH, need:['vehicleId','date'],
+    count: () => DB.bookings.length + ' รายการจอง'
+  }
+};
+let SQL_TARGET = 'docs';
+
+function renderSqlConn(){
+  loadSqlForm();
+  renderSqlTargets();
+}
+function renderSqlTargets(){
+  $('#sqlTargets').innerHTML = Object.keys(SQL_TARGETS).map(k=>{
+    const t = SQL_TARGETS[k];
+    return '<button type="button" class="pick-card'+(k===SQL_TARGET?' on':'')+'" data-target="'+k+'">'+
+      '<b>'+esc(t.label)+'</b><span>'+esc(t.hint)+'</span>'+
+      '<span class="cur">ตอนนี้มี '+esc(t.count())+'</span></button>';
+  }).join('');
+  $$('#sqlTargets [data-target]').forEach(b=>b.onclick=()=>pickSqlTarget(b.dataset.target));
+}
+function pickSqlTarget(k){
+  if(!SQL_TARGETS[k]) return;
+  SQL_TARGET = k;
+  SQL_SEL = null; $('#sqlView').value='';
+  $('#sqlTargetName').textContent = '• นำเข้าไปที่ ' + SQL_TARGETS[k].label;
+  renderSqlTargets();
+  sqlStep(2);
+  sqlMsg('ok','ปลายทาง: <b>'+esc(SQL_TARGETS[k].label)+'</b> — กรอกข้อมูลเซิร์ฟเวอร์แล้วกดเชื่อมต่อ');
+}
+$('#btnSqlBack0').onclick = () => sqlStep(1);
+
 function loadSqlForm(){
   const s=DB.sql||{};
   $('#sqlServer').value=s.server||''; $('#sqlPort').value=s.port||'1433'; $('#sqlDb').value=s.db||'';
@@ -2148,16 +2267,18 @@ function saveSqlForm(){
 $('#btnSqlSave').onclick = () => { saveSqlForm(); sqlMsg('ok','บันทึกค่าการเชื่อมต่อแล้ว'); };
 function sqlMsg(kind,msg){ $('#sqlMsg').innerHTML='<div class="notice '+(kind==='ok'?'ok':kind==='bad'?'bad':'warn')+'">'+msg+'</div>'; }
 
-/* ไฮไลต์ขั้นตอนที่ทำอยู่ + เปิด/ปิดกล่องของแต่ละขั้น */
+/* ไฮไลต์ขั้นตอนที่ทำอยู่ + เปิด/ปิดกล่องของแต่ละขั้น
+   ขั้น 1 ปลายทาง → 2 เซิร์ฟเวอร์ → 3 ฐานข้อมูล → 4 ตาราง/วิว → 5 นำเข้า */
 function sqlStep(n){
   $$('#sqlWiz .st').forEach(el=>{
     const k = +el.dataset.step;
     el.classList.toggle('on', k===n);
     el.classList.toggle('done', k<n);
   });
-  $('#sqlStep2').classList.toggle('hidden', n<2);
-  $('#sqlStep3').classList.toggle('hidden', n<3);
-  if(n<3){ $('#sqlPreview').innerHTML=''; SQL_SEL=null; }
+  $('#sqlStep1').classList.toggle('hidden', n<2);
+  $('#sqlStep2').classList.toggle('hidden', n<3);
+  $('#sqlStep3').classList.toggle('hidden', n<4);
+  if(n<4){ $('#sqlPreview').innerHTML=''; SQL_SEL=null; }
 }
 
 function sqlPayload(action, extra){
@@ -2205,11 +2326,11 @@ $('#btnSqlConnect').onclick = async () => {
   /* ตัดคำว่า (ระบบ) ออกตอนอ่านค่า → เก็บชื่อจริงไว้ใน value */
   $$('#sqlDbList option').forEach((o,i)=>o.value=list[i]);
   saveSqlForm();
-  sqlStep(2);
+  sqlStep(3);
   sqlMsg('ok','พบ '+list.length+' ฐานข้อมูล — เลือกฐานข้อมูลที่ต้องการ');
 };
-$('#btnSqlBack1').onclick = () => sqlStep(1);
-$('#btnSqlBack2').onclick = () => sqlStep(2);
+$('#btnSqlBack1').onclick = () => sqlStep(2);
+$('#btnSqlBack2').onclick = () => sqlStep(3);
 
 /* ---------- ขั้นที่ 2 → 3 : ขอรายชื่อ Table / View ---------- */
 $('#btnSqlUseDb').onclick = async () => {
@@ -2221,7 +2342,7 @@ $('#btnSqlUseDb').onclick = async () => {
   SQL_OBJS = d.objects||[];
   $('#sqlDbName').textContent = '• ' + db;
   saveSqlForm();
-  sqlStep(3);
+  sqlStep(4);
   renderSqlObjects();
   sqlMsg('ok','พบ '+SQL_OBJS.length+' รายการใน '+esc(db)+' — เลือก Table หรือ View ที่เก็บเลขที่เอกสาร');
 };
@@ -2255,25 +2376,29 @@ async function sqlPickObject(full){
   const d = await sqlCall('preview', {view:full}, 'กำลังอ่านตัวอย่างข้อมูลจาก '+esc(full)+' ...');
   if(!d) return;
   saveSqlForm();
-  sqlStep(4);
+  sqlStep(5);
+  const T = SQL_TARGETS[SQL_TARGET];
   const cols = d.columns||[], rows = d.rows||[];
-  const matched = cols.filter(c=>mapHeader(c));
-  const hasDocNo = cols.some(c=>mapHeader(c)==='docNo');
+  const matched = cols.filter(c=>mapWith(T.map,c));
+  const missing = T.need.filter(f=>!cols.some(c=>mapWith(T.map,c)===f));
   $('#sqlPreview').innerHTML =
     '<div class="panel flush" style="margin-top:16px"><div class="panel-title">'+
       '<h3>ตัวอย่างข้อมูลจาก '+esc(full)+'</h3>'+
-      '<button class="primary sm" id="btnSqlPull">นำเข้าข้อมูลจาก '+esc(full)+'</button></div>'+
+      '<button class="primary sm" id="btnSqlPull">นำเข้าไปที่ '+esc(T.label)+'</button></div>'+
     '<div style="padding:0 16px 12px">'+
-      (hasDocNo
-        ? '<div class="notice ok">จับคู่คอลัมน์ได้: '+matched.map(c=>'<span class="tag">'+esc(c)+' → '+esc(HEAD_TH[mapHeader(c)])+'</span>').join('')+'</div>'
-        : '<div class="notice warn">ไม่พบคอลัมน์ <b>เลขที่เอกสาร</b> (รองรับชื่อ: '+esc(HEAD_MAP.docNo.join(', '))+
-          ')<br>ถ้าเลือก View ผิด ให้เลือกใหม่ หรือสร้าง View ใน SQL Server ที่ตั้งชื่อคอลัมน์ให้ตรง</div>')+
+      (!missing.length
+        ? '<div class="notice ok">นำเข้าไปที่ <b>'+esc(T.label)+'</b> • จับคู่คอลัมน์ได้: '+
+            matched.map(c=>'<span class="tag">'+esc(c)+' → '+esc(T.th[mapWith(T.map,c)])+'</span>').join('')+'</div>'
+        : '<div class="notice warn">ยังไม่พบคอลัมน์ที่จำเป็น: '+
+            missing.map(f=>'<b>'+esc(T.th[f])+'</b>').join(', ')+
+            '<br>ชื่อคอลัมน์ที่รองรับ: '+esc(missing.map(f=>T.map[f].join(', ')).join(' | '))+
+            '<br>ถ้าเลือกผิดตาราง ให้เลือกใหม่ หรือสร้าง View ใน SQL Server ที่ตั้งชื่อคอลัมน์ให้ตรง</div>')+
       '<span class="subtle">'+rows.length+' แถวแรกจากทั้งหมด • '+cols.length+' คอลัมน์</span>'+
     '</div>'+
     '<div class="tbl-wrap">'+ table(cols.map(esc),
       rows.slice(0,15).map(r=>cols.map(c=>'<span class="subtle">'+esc(r[c]==null?'':r[c])+'</span>'))) +'</div></div>';
   $('#btnSqlPull').onclick = sqlPull;
-  sqlMsg('ok','อ่านตัวอย่างจาก '+esc(full)+' สำเร็จ — ตรวจข้อมูลแล้วกด "นำเข้าข้อมูล"');
+  sqlMsg('ok','อ่านตัวอย่างจาก '+esc(full)+' สำเร็จ — ตรวจข้อมูลแล้วกดปุ่มนำเข้า');
 }
 async function sqlPull(){
   const full = SQL_SEL || $('#sqlView').value.trim();
@@ -2282,13 +2407,74 @@ async function sqlPull(){
   const rows = d.rows||[];
   if(!rows.length){ sqlMsg('warn','เชื่อมต่อสำเร็จ แต่ไม่มีข้อมูลใน '+esc(full)); return; }
   const head = d.columns && d.columns.length ? d.columns : Object.keys(rows[0]);
-  const arr = [head].concat(rows.map(r=>head.map(h=>r[h])));
-  buildPreview(arr, 'SQL Server: '+full);
   saveSqlForm();
-  sqlMsg('ok','ดึงข้อมูล '+rows.length+' แถว'+(d.truncated? ' (จำกัดที่ 5,000 แถวแรก)':'')+
-    ' — ตรวจสอบแล้วกดนำเข้าที่แท็บ "นำเข้าจาก Excel"');
-  $$('#docTabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab==='excel'));
-  $$('#v-docs .tabpage').forEach(p=>p.classList.toggle('on', p.id==='tab-excel'));
+  const more = d.truncated? ' (จำกัดที่ 5,000 แถวแรก)':'';
+
+  if(SQL_TARGET==='docs'){
+    /* เอกสารใช้หน้าตรวจก่อนนำเข้าร่วมกับการนำเข้าจาก Excel */
+    const arr = [head].concat(rows.map(r=>head.map(h=>r[h])));
+    buildPreview(arr, 'SQL Server: '+full);
+    sqlMsg('ok','ดึงข้อมูล '+rows.length+' แถว'+more+' — ตรวจสอบแล้วกดนำเข้าที่หน้า "ข้อมูลเอกสาร"');
+    go('docs');
+    $$('#docTabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab==='excel'));
+    $$('#v-docs .tabpage').forEach(p=>p.classList.toggle('on', p.id==='tab-excel'));
+    return;
+  }
+  const res = (SQL_TARGET==='vehicles') ? importVehicles(rows, head, full) : importBookings(rows, head, full);
+  sqlMsg(res.added+res.updated? 'ok':'warn', res.msg);
+  renderSqlTargets();
+}
+
+/* แปลงหนึ่งแถวจาก SQL ให้เป็นออบเจ็กต์ตามตารางจับคู่ของปลายทาง */
+function rowToObj(map, head, row){
+  const o = {};
+  head.forEach(h=>{ const f = mapWith(map,h); if(f && o[f]===undefined) o[f]=row[h]; });
+  return o;
+}
+/* ---- นำเข้า "รถและคนขับ" ---- */
+function importVehicles(rows, head, src){
+  let added=0, updated=0, skipped=0;
+  rows.forEach(r=>{
+    const o = rowToObj(VEH_MAP, head, r);
+    const id = String(o.id||o.plate||'').trim();
+    if(!id){ skipped++; return; }
+    const rec = {id:id, brand:String(o.brand||'').trim(), model:String(o.model||'').trim(),
+      plate:String(o.plate||'').trim(), driver:String(o.driver||'').trim(), phone:String(o.phone||'').trim(),
+      type:String(o.type||'').trim(), capacity:String(o.capacity||'').trim(), note:String(o.note||'').trim()};
+    const ex = DB.vehicles.find(v=>v.id===id);
+    if(ex){ Object.assign(ex, rec); updated++; }
+    else { DB.vehicles.push(Object.assign({active:true}, rec)); added++; }
+  });
+  if(added||updated){ save(); renderVehicles(); refreshDocViews(); }
+  return {added, updated, skipped,
+    msg:'นำเข้าไปที่ <b>รถและคนขับ</b> จาก '+esc(src)+' — เพิ่มใหม่ <b>'+added+'</b> คัน, อัปเดต <b>'+updated+'</b> คัน'+
+      (skipped? ', ข้าม '+skipped+' แถว (ไม่มีรหัสรถ/ทะเบียน)':'')};
+}
+/* ---- นำเข้า "การจองรถ" ---- */
+function importBookings(rows, head, src){
+  let added=0, updated=0, skipped=0, noVeh=0;
+  rows.forEach(r=>{
+    const o = rowToObj(BK_MAP, head, r);
+    const vid = String(o.vehicleId||'').trim();
+    if(!vid || o.date==null || o.date===''){ skipped++; return; }
+    /* รับได้ทั้งรหัสรถและทะเบียน */
+    const v = DB.vehicles.find(x=>x.id===vid) || DB.vehicles.find(x=>x.plate===vid);
+    if(!v){ noVeh++; return; }
+    const rec = {vehicleId:v.id, date:normDate(o.date), province:String(o.province||'').trim(),
+      depart:normTime(o.depart), back:normTime(o.back),
+      status:(VSTATUS.indexOf(String(o.status||'').trim())>-1? String(o.status).trim() : 'จองแล้ว'),
+      note:String(o.note||'').trim()};
+    const id = String(o.id||'').trim();
+    const ex = id ? DB.bookings.find(b=>b.id===id)
+                  : DB.bookings.find(b=>b.vehicleId===rec.vehicleId && b.date===rec.date && b.depart===rec.depart);
+    if(ex){ Object.assign(ex, rec); updated++; }
+    else { DB.bookings.push(Object.assign({id:id||uid('BK')}, rec)); added++; }
+  });
+  if(added||updated){ save(); renderCalendar(); refreshDocViews(); }
+  return {added, updated, skipped,
+    msg:'นำเข้าไปที่ <b>ปฏิทินรถ</b> จาก '+esc(src)+' — เพิ่มใหม่ <b>'+added+'</b> รายการ, อัปเดต <b>'+updated+'</b> รายการ'+
+      (noVeh? ', ข้าม '+noVeh+' แถว (ไม่พบรถคันนั้นในระบบ — เพิ่มรถก่อน)':'')+
+      (skipped? ', ข้าม '+skipped+' แถว (ไม่มีรถหรือวันที่)':'')};
 }
 
 /* ============================================================
