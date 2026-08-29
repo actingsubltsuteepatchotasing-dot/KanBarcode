@@ -14,11 +14,15 @@
      และไม่มีการลบเอกสารทิ้ง แม้แถวนั้นจะหายไปจาก View แล้วก็ตาม
 
    วิธีใช้
-     1) คัดลอก sync-config.example.json เป็น sync-config.json แล้วใส่ค่าจริง
-     2) npm install         (ครั้งแรกครั้งเดียว)
+     1) npm install                 (ครั้งแรกครั้งเดียว)
+     2) node sync-sql.js --pick     ← ตั้งค่าแบบเลือกจากรายการจริงบนเซิร์ฟเวอร์
+                                      (เลือกฐานข้อมูล → เลือก Table/View → จับคู่คอลัมน์)
+                                      หรือดับเบิลคลิก sync-pick.bat
+        node sync-sql.js --list     ← แค่ดูรายชื่อฐานข้อมูลกับ View เฉย ๆ
      3) node sync-sql.js --once     ← ลองยิงรอบเดียวดูก่อน
         node sync-sql.js            ← รันค้างไว้ ดึงซ้ำตามรอบที่ตั้ง
         หรือดับเบิลคลิก sync-start.bat
+     (จะแก้ sync-config.json ด้วยมือเองก็ได้ ดูแม่แบบที่ sync-config.example.json)
    ============================================================ */
 const fs = require('fs');
 const path = require('path');
@@ -29,6 +33,8 @@ const CONFIG_FILE = path.join(ROOT, 'sync-config.json');
 const STATE_FILE = path.join(ROOT, '.sync-state.json');
 const LOG_FILE = path.join(ROOT, 'sync-sql.log');
 const ONCE = process.argv.includes('--once');
+const PICK = process.argv.includes('--pick') || process.argv.includes('--setup');
+const LIST = process.argv.includes('--list');
 const CHUNK = 400;
 
 /* ---------------- log ---------------- */
@@ -53,10 +59,33 @@ function loadEnvLocal() {
     if (v && process.env[m[1]] === undefined) process.env[m[1]] = v;
   });
 }
+/* อ่าน config เท่าที่มี ไม่บ่นถ้ายังไม่ครบ — ใช้ตอนตั้งค่าด้วย --pick */
+function loadConfigLoose() {
+  loadEnvLocal();
+  let cfg = {};
+  if (fs.existsSync(CONFIG_FILE)) {
+    try { cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); }
+    catch (e) { log('sync-config.json ไม่ใช่ JSON ที่ถูกต้อง: ' + e.message); process.exit(1); }
+  }
+  cfg.sql = cfg.sql || {};
+  cfg.supabase = cfg.supabase || {};
+  cfg.supabase.url = cfg.supabase.url || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  cfg.supabase.key = cfg.supabase.key || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  cfg.supabase.email = cfg.supabase.email || process.env.SYNC_EMAIL || '';
+  cfg.supabase.password = cfg.supabase.password || process.env.SYNC_PASSWORD || '';
+  cfg.supabase.serviceKey = cfg.supabase.serviceKey || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  cfg.everyMinutes = Number(cfg.everyMinutes) || 30;
+  cfg.jobs = Array.isArray(cfg.jobs) ? cfg.jobs : [];
+  return cfg;
+}
+function saveConfig(cfg) {
+  const out = JSON.parse(JSON.stringify(cfg));
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(out, null, 2), 'utf8');
+}
 function loadConfig() {
   loadEnvLocal();
   if (!fs.existsSync(CONFIG_FILE)) {
-    log('ไม่พบไฟล์ sync-config.json — คัดลอก sync-config.example.json เป็น sync-config.json แล้วใส่ค่าจริงก่อน');
+    log('ไม่พบไฟล์ sync-config.json — สั่ง  node sync-sql.js --pick  เพื่อตั้งค่าแบบเลือกจากรายการ');
     process.exit(1);
   }
   let cfg;
@@ -293,6 +322,191 @@ function toVehRow(o) {
   };
 }
 
+/* ---------------- โหมดเลือก View เอง (--pick) / ดูรายการ (--list) ----------------
+   ต่อเข้า SQL Server แล้วให้เลือกจากรายการจริงบนเซิร์ฟเวอร์ ไม่ต้องพิมพ์ชื่อเอง
+   เลือกเสร็จเขียนลง sync-config.json ให้เลย */
+const readline = require('readline');
+
+function ask(rl, q, dflt) {
+  const hint = (dflt !== undefined && dflt !== '') ? ' [' + dflt + ']' : '';
+  return new Promise(res => rl.question(q + hint + ': ', a => {
+    a = String(a || '').trim();
+    res(a === '' && dflt !== undefined ? String(dflt) : a);
+  }));
+}
+async function askPick(rl, title, items, dfltIndex) {
+  console.log('');
+  console.log(title);
+  items.forEach((it, i) => console.log('  ' + String(i + 1).padStart(3, ' ') + ') ' + it));
+  for (;;) {
+    const a = await ask(rl, 'เลือกหมายเลข', dfltIndex ? String(dfltIndex) : undefined);
+    const n = parseInt(a, 10);
+    if (n >= 1 && n <= items.length) return n - 1;
+    console.log('  ** ใส่หมายเลขระหว่าง 1 ถึง ' + items.length + ' **');
+  }
+}
+async function withPool(c, fn) {
+  const pool = await new sql.ConnectionPool(sqlConfig(c)).connect();
+  try { return await fn(pool); }
+  finally { try { await pool.close(); } catch (e) { /* ปิดไม่ได้ก็ปล่อย */ } }
+}
+async function listDatabases(c) {
+  return withPool(Object.assign({}, c, { database: 'master' }), async pool => {
+    const r = await pool.request().query(
+      'SELECT name, CASE WHEN database_id <= 4 THEN 1 ELSE 0 END AS is_system ' +
+      'FROM sys.databases WHERE state = 0 AND HAS_DBACCESS(name) = 1 ORDER BY is_system, name');
+    return r.recordset.map(x => ({ name: x.name, system: !!x.is_system }));
+  });
+}
+async function listObjects(c) {
+  return withPool(c, async pool => {
+    const r = await pool.request().query(
+      "SELECT s.name AS [schema], o.name AS [name], " +
+      "CASE o.type WHEN 'V' THEN 'VIEW' ELSE 'TABLE' END AS [type] " +
+      'FROM sys.objects o JOIN sys.schemas s ON s.schema_id = o.schema_id ' +
+      "WHERE o.type IN ('U','V') AND o.is_ms_shipped = 0 ORDER BY [type], s.name, o.name");
+    return r.recordset;
+  });
+}
+async function peek(c, view) {
+  return withPool(c, async pool => {
+    const r = await pool.request().query('SELECT TOP 5 * FROM ' + safeName(view));
+    const columns = r.recordset && r.recordset.columns
+      ? Object.keys(r.recordset.columns)
+      : (r.recordset[0] ? Object.keys(r.recordset[0]) : []);
+    return { columns, rows: r.recordset };
+  });
+}
+
+async function runList() {
+  const cfg = loadConfigLoose();
+  if (!cfg.sql.server) { log('ยังไม่ได้ตั้ง sql.server ใน sync-config.json — สั่ง --pick เพื่อตั้งค่า'); process.exit(1); }
+  const dbs = await listDatabases(cfg.sql);
+  console.log('');
+  console.log('ฐานข้อมูลบน ' + cfg.sql.server);
+  dbs.forEach(d => console.log('  - ' + d.name + (d.system ? '  (ระบบ)' : '')));
+  if (cfg.sql.database) {
+    const objs = await listObjects(cfg.sql);
+    console.log('');
+    console.log('Table / View ใน ' + cfg.sql.database);
+    objs.forEach(o => console.log('  - [' + (o.type === 'VIEW' ? 'View ' : 'Table') + '] ' + o.schema + '.' + o.name));
+  }
+}
+
+async function runPick() {
+  const cfg = loadConfigLoose();
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    console.log('');
+    console.log('=== ตั้งค่าตัวดึงข้อมูลอัตโนมัติ — เลือก View เองจากรายการจริงบนเซิร์ฟเวอร์ ===');
+    console.log('(กด Enter เพื่อใช้ค่าในวงเล็บ)');
+    console.log('');
+
+    /* ---- 1) ค่าเชื่อมต่อ SQL Server ---- */
+    cfg.sql.server = await ask(rl, 'Server / DSN', cfg.sql.server || 'bcs-server');
+    cfg.sql.port = await ask(rl, 'Port', cfg.sql.port || '1433');
+    const authAns = await ask(rl, 'วิธีล็อกอิน  1) SQL Server (กรอกรหัส)  2) Windows (NTLM)',
+      String(cfg.sql.auth || 'sql').toLowerCase() === 'ntlm' ? '2' : '1');
+    cfg.sql.auth = authAns === '2' ? 'ntlm' : 'sql';
+    if (cfg.sql.auth === 'ntlm') cfg.sql.domain = await ask(rl, 'Domain', cfg.sql.domain || '');
+    cfg.sql.user = await ask(rl, 'Username', cfg.sql.user || 'sa');
+    cfg.sql.password = await ask(rl, 'Password', cfg.sql.password || '');
+
+    /* ---- 2) เลือกฐานข้อมูล ---- */
+    console.log('');
+    console.log('กำลังอ่านรายชื่อฐานข้อมูลจาก ' + cfg.sql.server + ' ...');
+    const dbs = await listDatabases(cfg.sql);
+    if (!dbs.length) throw new Error('บัญชีนี้ยังไม่เห็นฐานข้อมูลใดเลย');
+    const dbIdx = dbs.findIndex(d => d.name === cfg.sql.database);
+    const di = await askPick(rl, 'เลือกฐานข้อมูล',
+      dbs.map(d => d.name + (d.system ? '  (ระบบ)' : '')), dbIdx >= 0 ? dbIdx + 1 : undefined);
+    cfg.sql.database = dbs[di].name;
+
+    /* ---- 3) เลือกปลายทาง ---- */
+    const targets = ['documents', 'vehicles'];
+    const ti = await askPick(rl, 'จะนำเข้าไปที่หน้าไหน',
+      ['ข้อมูลเอกสาร (documents)', 'รถและคนขับ (vehicles)'], 1);
+    const target = targets[ti];
+
+    /* ---- 4) เลือก Table / View ---- */
+    console.log('');
+    console.log('กำลังอ่านรายชื่อ Table / View ใน ' + cfg.sql.database + ' ...');
+    let objs = await listObjects(cfg.sql);
+    if (!objs.length) throw new Error('ไม่พบ Table หรือ View ในฐานข้อมูลนี้');
+    if (objs.length > 40) {
+      const kw = await ask(rl, 'มี ' + objs.length + ' รายการ — พิมพ์คำค้นเพื่อกรอง (Enter = ดูทั้งหมด)', '');
+      if (kw) {
+        const f = objs.filter(o => (o.schema + '.' + o.name).toLowerCase().indexOf(kw.toLowerCase()) > -1);
+        if (f.length) objs = f; else console.log('  ** ไม่พบตามคำค้น แสดงทั้งหมดแทน **');
+      }
+    }
+    const oi = await askPick(rl, 'เลือก Table หรือ View ที่จะดึง',
+      objs.map(o => '[' + (o.type === 'VIEW' ? 'View ' : 'Table') + '] ' + o.schema + '.' + o.name));
+    const view = objs[oi].schema + '.' + objs[oi].name;
+
+    /* ---- 5) ดูคอลัมน์จริง แล้วจับคู่ ---- */
+    console.log('');
+    console.log('กำลังอ่านคอลัมน์ของ ' + view + ' ...');
+    const { columns, rows } = await peek(cfg.sql, view);
+    console.log('คอลัมน์ที่พบ: ' + columns.join(', '));
+    if (rows[0]) console.log('ตัวอย่างแถวแรก: ' + JSON.stringify(rows[0]).slice(0, 300));
+
+    const job = { name: '', enabled: true, target: target, view: view, top: 5000, columns: {} };
+    const auto = buildHeadMap(job, columns);
+    const spec = MAPS[target];
+    const got = Object.values(auto);
+    console.log('');
+    console.log('จับคู่อัตโนมัติได้: ' + (Object.keys(auto).length
+      ? Object.keys(auto).map(c => c + ' → ' + auto[c]).join(', ') : '(ไม่ได้เลย)'));
+
+    /* คอลัมน์ที่จำเป็นแต่จับคู่ไม่ได้ → ให้เลือกเอง */
+    for (const need of spec.need) {
+      if (got.indexOf(need) > -1) continue;
+      console.log('');
+      console.log('** ยังไม่รู้ว่าคอลัมน์ไหนคือ "' + need + '" **');
+      const ci = await askPick(rl, 'เลือกคอลัมน์ที่เป็น ' + need, columns);
+      job.columns[need] = columns[ci];
+    }
+    /* จับคู่คอลัมน์ที่เหลือเพิ่มเอง — เลือกช่องของระบบ แล้วเลือกคอลัมน์ ทำซ้ำจนกว่าจะพอ */
+    const DONE = '— พอแล้ว ไปต่อ —';
+    for (;;) {
+      const left = Object.keys(spec.map).filter(f => Object.values(buildHeadMap(job, columns)).indexOf(f) < 0);
+      if (!left.length) break;
+      const fi = await askPick(rl, 'จับคู่คอลัมน์เพิ่มไหม (เลือกช่องที่ต้องการ)',
+        left.map(f => f + ' (' + spec.map[f][0] + ')').concat([DONE]), left.length + 1);
+      if (fi === left.length) break;
+      const used = Object.keys(buildHeadMap(job, columns));
+      const pickCols = columns.filter(c => used.indexOf(c) < 0);
+      if (!pickCols.length) { console.log('  ** ไม่เหลือคอลัมน์ให้จับคู่แล้ว **'); break; }
+      const ci = await askPick(rl, 'คอลัมน์ไหนคือ "' + left[fi] + '"', pickCols.concat([DONE]), pickCols.length + 1);
+      if (ci === pickCols.length) continue;
+      job.columns[left[fi]] = pickCols[ci];
+      console.log('  จับคู่แล้ว: ' + pickCols[ci] + ' → ' + left[fi]);
+    }
+
+    /* ---- 6) ชื่องาน + รอบเวลา + บัญชี Supabase ---- */
+    job.name = await ask(rl, 'ตั้งชื่องานนี้', view + ' → ' + (target === 'documents' ? 'เอกสาร' : 'รถ'));
+    cfg.everyMinutes = Number(await ask(rl, 'ดึงซ้ำทุกกี่นาที', cfg.everyMinutes || 30)) || 30;
+    if (!cfg.supabase.serviceKey) {
+      cfg.supabase.email = await ask(rl, 'อีเมลบัญชี KanBarcode ที่ใช้เขียนข้อมูล', cfg.supabase.email || '');
+      cfg.supabase.password = await ask(rl, 'รหัสผ่านบัญชีนั้น', cfg.supabase.password || '');
+    }
+
+    const same = cfg.jobs.findIndex(j => j.name === job.name);
+    if (same >= 0) cfg.jobs[same] = job; else cfg.jobs.push(job);
+    saveConfig(cfg);
+
+    console.log('');
+    log('บันทึกลง sync-config.json แล้ว — งาน "' + job.name + '" ดึงจาก ' + view +
+      ' ใน ' + cfg.sql.database + ' ทุก ' + cfg.everyMinutes + ' นาที');
+    console.log('');
+    console.log('ขั้นต่อไป:  node sync-sql.js --once     ← ลองดึงจริงหนึ่งรอบ');
+    console.log('           sync-start.bat              ← รันค้างไว้');
+  } finally {
+    rl.close();
+  }
+}
+
 /* ---------------- งานหนึ่งรอบ ---------------- */
 async function runJob(cfg, job, state) {
   const spec = MAPS[job.target];
@@ -368,6 +582,9 @@ async function runOnce(cfg) {
 }
 
 (async function main() {
+  if (LIST) { try { await runList(); } catch (e) { log('ผิดพลาด: ' + ((e && e.message) || e)); process.exitCode = 1; } return; }
+  if (PICK) { try { await runPick(); } catch (e) { log('ผิดพลาด: ' + ((e && e.message) || e)); process.exitCode = 1; } return; }
+
   const cfg = loadConfig();
   log('===== เริ่มทำงาน — ' + cfg.jobs.length + ' งาน, ทุก ' + cfg.everyMinutes + ' นาที' + (ONCE ? ' (รอบเดียว)' : '') + ' =====');
   try { await runOnce(cfg); }

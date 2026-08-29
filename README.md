@@ -63,7 +63,9 @@ index.html               เว็บทั้งระบบ (HTML + CSS + JS �
 api/config.js            ส่งค่า Supabase จาก Environment Variables ให้หน้าเว็บ
 api/sqlserver.js         API เชื่อมต่อ SQL Server (ใช้ได้ทั้งบน Vercel และรันในเครื่อง)
 local-server.js          รันเว็บ + API ในเครื่อง สำหรับ SQL Server ที่อยู่ในวง LAN (npm start)
-sync-sql.js              ตัวดึงข้อมูลอัตโนมัติ SQL Server -> Supabase (sync-start.bat)
+sync-sql.js              ตัวดึงข้อมูลอัตโนมัติ SQL Server -> Supabase
+sync-pick.bat            ตั้งค่าตัวดึง แบบเลือกฐานข้อมูล/View จากรายการจริง
+sync-start.bat           รันตัวดึงค้างไว้
 start-lan.bat            ดับเบิลคลิกเพื่อเปิดเซิร์ฟเวอร์ในวง LAN (เรียก local-server.js ให้)
 supabase/schema.sql      ตาราง profiles + RLS + trigger (รันใน SQL Editor)
 Docs/SUPABASE-SETUP.md   ขั้นตอนตั้งค่า Supabase ตั้งแต่ต้นจนจบ
@@ -141,14 +143,26 @@ vercel.json              ตั้งค่า Vercel
 ตัวดึงนี้รันเบื้องหลังบนคอมเครื่องไหนก็ได้ในออฟฟิศที่ Excel ต่อ SQL Server ได้อยู่แล้ว
 **ไม่ต้องติดตั้งหรือแก้อะไรที่เครื่อง SQL Server**
 
+**ตั้งค่าแบบเลือกจากรายการจริง ไม่ต้องพิมพ์ชื่อ View เอง** — ดับเบิลคลิก **`sync-pick.bat`**
+(หรือสั่ง `node sync-sql.js --pick`) แล้วตอบตามที่ถามทีละข้อ
+
+1. กรอก Server / Port / วิธีล็อกอิน / Username / Password
+2. **เลือกฐานข้อมูล** จากรายการจริงบนเซิร์ฟเวอร์ (พิมพ์แค่หมายเลข)
+3. เลือกปลายทาง — ข้อมูลเอกสาร หรือ รถและคนขับ
+4. **เลือก Table / View** จากรายการจริง (มีให้พิมพ์คำค้นกรองถ้ารายการเยอะ)
+5. ระบบอ่านคอลัมน์จริงมาให้ดู แล้วจับคู่อัตโนมัติ ช่องไหนเดาไม่ออกจะให้เลือกเอง
+6. ตั้งชื่องาน + รอบเวลา + บัญชีที่ใช้เขียนข้อมูล → เขียนลง `sync-config.json` ให้เลย
+
+จากนั้น
+
 ```
-copy sync-config.example.json sync-config.json   ← แล้วแก้ค่าในไฟล์
-node sync-sql.js --once                          ← ลองยิงรอบเดียวดูก่อน
+node sync-sql.js --once     ← ลองยิงจริงรอบเดียว ดูผลใน sync-sql.log
+node sync-sql.js --list     ← แค่ดูรายชื่อฐานข้อมูล / View เฉย ๆ
 ```
 
 ผ่านแล้วดับเบิลคลิก **`sync-start.bat`** ให้รันค้างไว้ (หรือวาง shortcut ใน `shell:startup` ให้เปิดเองตอนบูต)
 
-ค่าที่ต้องใส่ใน `sync-config.json`
+จะแก้ `sync-config.json` ด้วยมือเองก็ได้ — ดูแม่แบบที่ `sync-config.example.json`
 
 | ค่า | คือ |
 |---|---|
