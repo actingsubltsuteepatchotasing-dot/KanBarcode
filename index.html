@@ -218,6 +218,23 @@ button{cursor:pointer;border-radius:9px;border:1px solid transparent;padding:9px
 .mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
 pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflow:auto;font-size:11.5px;line-height:1.6}
 .tag{display:inline-block;background:#f1f5f9;border-radius:6px;padding:2px 7px;font-size:11.5px;color:#475569;margin:2px 3px 2px 0}
+
+/* ---------- ตัวช่วยเชื่อมต่อ SQL Server (แบบ Excel) ---------- */
+.wiz{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.wiz .st{display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--line);
+  border-radius:99px;background:#fff;font-size:12.5px;color:var(--muted)}
+.wiz .st b{display:flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;
+  background:#eef2f8;color:var(--muted);font-size:12px}
+.wiz .st.on{border-color:var(--navy);color:var(--navy);font-weight:600}
+.wiz .st.on b{background:var(--navy);color:#fff}
+.wiz .st.done{border-color:#bbf7d0;color:var(--green)}
+.wiz .st.done b{background:#dcfce7;color:var(--green)}
+#sqlObjTable tr{cursor:pointer}
+#sqlObjTable tr.sel td{background:#eef4ff}
+#sqlObjTable td{padding:8px 12px}
+.obj-type{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.obj-type.t{background:#eff6ff;color:#1d4ed8}
+.obj-type.v{background:#f5f3ff;color:#6d28d9}
 @media(max-width:1000px){.two{grid-template-columns:1fr}}
 @media(max-width:820px){
   .app.on{flex-direction:column}
@@ -487,59 +504,70 @@ pre.code{background:#0f2545;color:#d6e2f5;padding:14px;border-radius:9px;overflo
         </div>
 
         <div class="tabpage" id="tab-sql">
-          <div class="notice warn">การเชื่อมต่อ SQL Server ต้องเรียกผ่าน API บนเซิร์ฟเวอร์ (Vercel Serverless Function) เพราะเบราว์เซอร์ต่อ TCP ตรงไปยัง SQL Server ไม่ได้ — ดูโค้ดตัวอย่างด้านล่าง</div>
-          <div class="row2">
-            <div class="panel">
-              <h3 style="margin-bottom:14px">ข้อมูลการเชื่อมต่อ</h3>
-              <div class="row2">
-                <div class="field"><label>Server / Host</label><input id="sqlServer" placeholder="เช่น 192.168.1.10 หรือ SRV\\SQLEXPRESS"></div>
-                <div class="field"><label>Port</label><input id="sqlPort" placeholder="1433"></div>
-              </div>
-              <div class="field"><label>Database</label><input id="sqlDb" placeholder="เช่น KaoAnERP"></div>
-              <div class="row2">
-                <div class="field"><label>Username</label><input id="sqlUser" placeholder="sa"></div>
-                <div class="field"><label>Password</label><input id="sqlPass" type="password" placeholder="••••••••"></div>
-              </div>
-              <div class="field"><label>View / Table ที่ใช้ดึงเลขที่เอกสาร</label><input id="sqlView" placeholder="เช่น dbo.V_DeliveryDocument"></div>
-              <div class="field"><label>API Endpoint</label><input id="sqlApi" placeholder="/api/sqlserver"><div class="hint">Serverless function ที่ทำหน้าที่ต่อกับ SQL Server</div></div>
-              <div class="chk"><input type="checkbox" id="sqlSavePass"><label for="sqlSavePass" style="margin:0">จำรหัสผ่านไว้ในเครื่องนี้</label></div>
-              <div class="modal-actions" style="justify-content:flex-start">
-                <button class="outline" id="btnSqlSave">บันทึกค่า</button>
-                <button class="outline" id="btnSqlTest">ทดสอบเชื่อมต่อ</button>
-                <button class="primary" id="btnSqlPull">ดึงข้อมูลเข้าระบบ</button>
-              </div>
-              <div id="sqlMsg" style="margin-top:12px"></div>
+          <div class="notice">เชื่อมต่อแบบเดียวกับ Excel → <b>Data</b> → <b>From Database</b> → <b>From SQL Server Database</b><br>
+            กรอกชื่อ Server → เลือก Database → เลือก Table หรือ View → ดูตัวอย่างข้อมูล → นำเข้า</div>
+          <div id="sqlMsg"></div>
+
+          <div class="wiz" id="sqlWiz">
+            <div class="st on" data-step="1"><b>1</b> เซิร์ฟเวอร์</div>
+            <div class="st" data-step="2"><b>2</b> ฐานข้อมูล</div>
+            <div class="st" data-step="3"><b>3</b> ตาราง / วิว</div>
+            <div class="st" data-step="4"><b>4</b> นำเข้า</div>
+          </div>
+
+          <!-- ---- ขั้นที่ 1: เซิร์ฟเวอร์ ---- -->
+          <div class="panel" id="sqlStep1">
+            <div class="panel-title"><h3>1. เซิร์ฟเวอร์ที่จะเชื่อมต่อ</h3></div>
+            <div class="row2">
+              <div class="field"><label>Server / Host</label><input id="sqlServer" placeholder="เช่น 192.168.1.10 หรือ SRV\\SQLEXPRESS">
+                <div class="hint">ชื่อเดียวกับที่กรอกใน Excel ช่อง Server name</div></div>
+              <div class="field"><label>Port</label><input id="sqlPort" placeholder="1433"></div>
             </div>
-            <div class="panel">
-              <h3 style="margin-bottom:10px">ตัวอย่าง API สำหรับ Vercel</h3>
-              <p class="subtle">สร้างไฟล์ <span class="mono">api/sqlserver.js</span> แล้วเพิ่ม <span class="mono">mssql</span> ใน package.json</p>
-<pre class="code">import sql from 'mssql'
-
-export default async function handler(req, res) {
-  const { server, port, database, user,
-          password, view, action } = req.body
-
-  try {
-    const pool = await sql.connect({
-      server, port: Number(port) || 1433,
-      database, user, password,
-      options: { encrypt: false,
-                 trustServerCertificate: true }
-    })
-    if (action === 'test')
-      return res.json({ ok: true })
-
-    const r = await pool.request()
-      .query(`SELECT * FROM ${view}`)
-    res.json({ ok: true, rows: r.recordset })
-  } catch (e) {
-    res.status(500).json({ ok: false,
-                           error: e.message })
-  }
-}</pre>
-              <p class="subtle" style="margin-top:10px">คอลัมน์ที่ระบบอ่าน: แถว, เลขที่เอกสาร, วันที่เอกสาร, รหัสลูกค้า, ชื่อลูกค้า, ที่อยู่ (รองรับชื่ออังกฤษ DocNo, DocDate, CustCode, CustName, Address ด้วย)</p>
+            <div class="row2">
+              <div class="field"><label>Username</label><input id="sqlUser" placeholder="sa" autocomplete="off"></div>
+              <div class="field"><label>Password</label><input id="sqlPass" type="password" placeholder="••••••••" autocomplete="new-password"></div>
+            </div>
+            <div class="field"><label>API Endpoint</label><input id="sqlApi" placeholder="/api/sqlserver">
+              <div class="hint">ตัวกลางที่ต่อไปยัง SQL Server แทนเบราว์เซอร์ — ถ้า SQL Server อยู่ในวง LAN
+                ให้รัน <span class="mono">npm start</span> บนเครื่องในวงเดียวกัน แล้วเปิดเว็บจากเครื่องนั้น</div></div>
+            <div class="chk"><input type="checkbox" id="sqlSavePass"><label for="sqlSavePass" style="margin:0">จำรหัสผ่านไว้ในเครื่องนี้</label></div>
+            <input id="sqlDb" class="hidden">
+            <input id="sqlView" class="hidden">
+            <div class="modal-actions" style="justify-content:flex-start">
+              <button class="primary" id="btnSqlConnect">เชื่อมต่อ →</button>
+              <button class="outline" id="btnSqlTest">ทดสอบเชื่อมต่อ</button>
+              <button class="outline" id="btnSqlSave">บันทึกค่า</button>
             </div>
           </div>
+
+          <!-- ---- ขั้นที่ 2: ฐานข้อมูล ---- -->
+          <div class="panel hidden" id="sqlStep2">
+            <div class="panel-title"><h3>2. เลือกฐานข้อมูล</h3>
+              <button class="link" id="btnSqlBack1">← เปลี่ยนเซิร์ฟเวอร์</button></div>
+            <div class="toolbar" style="margin-bottom:0">
+              <select class="grow" id="sqlDbList"></select>
+              <button class="primary sm" id="btnSqlUseDb">เลือกฐานข้อมูลนี้ →</button>
+            </div>
+            <div class="hint" style="margin-top:8px">ไม่เห็นฐานข้อมูลที่ต้องการ? บัญชีที่ใช้ต้องมีสิทธิ์เข้าถึงฐานข้อมูลนั้นก่อน
+              — หรือพิมพ์ชื่อเองแล้วกดปุ่มด้านบนได้ที่ช่องนี้</div>
+            <div class="field" style="margin-top:8px"><input id="sqlDbManual" placeholder="พิมพ์ชื่อฐานข้อมูลเอง (ไม่บังคับ)"></div>
+          </div>
+
+          <!-- ---- ขั้นที่ 3: ตาราง / วิว ---- -->
+          <div class="panel flush hidden" id="sqlStep3">
+            <div class="panel-title"><h3>3. เลือก Table หรือ View <span class="subtle" id="sqlDbName"></span></h3>
+              <button class="link" id="btnSqlBack2">← เปลี่ยนฐานข้อมูล</button></div>
+            <div class="toolbar" style="padding:0 16px">
+              <input class="grow" id="sqlObjSearch" placeholder="ค้นหาชื่อตาราง / วิว">
+              <select id="sqlObjType">
+                <option value="">ทั้งหมด</option><option value="TABLE">เฉพาะ Table</option><option value="VIEW">เฉพาะ View</option>
+              </select>
+              <span class="subtle" id="sqlObjCount"></span>
+            </div>
+            <div class="tbl-wrap" id="sqlObjTable" style="max-height:330px;overflow:auto"></div>
+          </div>
+
+          <div id="sqlPreview"></div>
         </div>
       </section>
 
@@ -1983,6 +2011,8 @@ const HEAD_MAP = {
   amphoe:['อำเภอ','เขต','amphoe','amphur','district'],
   province:['จังหวัด','province','changwat']
 };
+const HEAD_TH = {row:'แถว', docNo:'เลขที่เอกสาร', docDate:'วันที่เอกสาร', custCode:'รหัสลูกค้า',
+  custName:'ชื่อลูกค้า', address:'ที่อยู่', tambon:'ตำบล', amphoe:'อำเภอ', province:'จังหวัด'};
 function mapHeader(h){
   const k=String(h||'').trim().toLowerCase().replace(/\s+/g,'');
   for(const f in HEAD_MAP) if(HEAD_MAP[f].some(x=>x.toLowerCase().replace(/\s+/g,'')===k)) return f;
@@ -2085,58 +2115,175 @@ function commitImport(){
   refreshDocViews();
 }
 
-/* --- SQL Server --- */
+/* ============================================================
+   SQL SERVER — ตัวช่วยเชื่อมต่อแบบเดียวกับ Excel
+   (Data → From Database → From SQL Server Database)
+     1) กรอก Server แล้วกด "เชื่อมต่อ"  → ขอรายชื่อฐานข้อมูล
+     2) เลือกฐานข้อมูล                  → ขอรายชื่อ Table / View
+     3) เลือก Table หรือ View           → ดูตัวอย่าง 50 แถวแรก
+     4) กดนำเข้า                        → ดึงจริงแล้วส่งต่อไปหน้าตรวจก่อนนำเข้า
+   เบราว์เซอร์ต่อ TCP ไปหา SQL Server เองไม่ได้ ทุกขั้นจึงเรียกผ่าน
+   api/sqlserver.js (รันบน Vercel หรือรันในเครื่องด้วย npm start ก็ได้)
+   ============================================================ */
+let SQL_OBJS = [], SQL_SEL = null;
+
 function loadSqlForm(){
   const s=DB.sql||{};
   $('#sqlServer').value=s.server||''; $('#sqlPort').value=s.port||'1433'; $('#sqlDb').value=s.db||'';
   $('#sqlUser').value=s.user||''; $('#sqlPass').value=s.savePass?(s.pass||''):''; $('#sqlView').value=s.view||'';
   $('#sqlApi').value=s.api||'/api/sqlserver'; $('#sqlSavePass').checked=!!s.savePass;
 }
-function sqlPayload(action){
-  return {action:action, server:$('#sqlServer').value.trim(), port:$('#sqlPort').value.trim()||'1433',
-    database:$('#sqlDb').value.trim(), user:$('#sqlUser').value.trim(), password:$('#sqlPass').value,
-    view:$('#sqlView').value.trim()};
-}
-$('#btnSqlSave').onclick = () => {
+function saveSqlForm(){
   DB.sql = {server:$('#sqlServer').value.trim(), port:$('#sqlPort').value.trim(), db:$('#sqlDb').value.trim(),
     user:$('#sqlUser').value.trim(), pass:$('#sqlSavePass').checked?$('#sqlPass').value:'', view:$('#sqlView').value.trim(),
     api:$('#sqlApi').value.trim()||'/api/sqlserver', savePass:$('#sqlSavePass').checked};
-  save(); sqlMsg('ok','บันทึกค่าการเชื่อมต่อแล้ว');
-};
+  save();
+}
+$('#btnSqlSave').onclick = () => { saveSqlForm(); sqlMsg('ok','บันทึกค่าการเชื่อมต่อแล้ว'); };
 function sqlMsg(kind,msg){ $('#sqlMsg').innerHTML='<div class="notice '+(kind==='ok'?'ok':kind==='bad'?'bad':'warn')+'">'+msg+'</div>'; }
-async function sqlCall(action){
+
+/* ไฮไลต์ขั้นตอนที่ทำอยู่ + เปิด/ปิดกล่องของแต่ละขั้น */
+function sqlStep(n){
+  $$('#sqlWiz .st').forEach(el=>{
+    const k = +el.dataset.step;
+    el.classList.toggle('on', k===n);
+    el.classList.toggle('done', k<n);
+  });
+  $('#sqlStep2').classList.toggle('hidden', n<2);
+  $('#sqlStep3').classList.toggle('hidden', n<3);
+  if(n<3){ $('#sqlPreview').innerHTML=''; SQL_SEL=null; }
+}
+
+function sqlPayload(action, extra){
+  return Object.assign({
+    action:action, server:$('#sqlServer').value.trim(), port:$('#sqlPort').value.trim()||'1433',
+    database:$('#sqlDb').value.trim(), user:$('#sqlUser').value.trim(), password:$('#sqlPass').value,
+    view:$('#sqlView').value.trim()
+  }, extra||{});
+}
+async function sqlCall(action, extra, busyText){
   const api=$('#sqlApi').value.trim()||'/api/sqlserver';
-  const p=sqlPayload(action);
-  if(!p.server||!p.database){ sqlMsg('bad','กรุณากรอก Server และ Database'); return null; }
-  if(action==='pull' && !p.view){ sqlMsg('bad','กรุณาระบุ View / Table ที่ใช้ดึงข้อมูล'); return null; }
-  sqlMsg('warn','กำลังเชื่อมต่อ '+esc(p.server)+' ...');
+  const p=sqlPayload(action, extra);
+  if(!p.server){ sqlMsg('bad','กรุณากรอกชื่อ Server'); return null; }
+  if(action!=='databases' && !p.database){ sqlMsg('bad','กรุณาเลือกฐานข้อมูลก่อน'); return null; }
+  if((action==='pull'||action==='preview') && !p.view){ sqlMsg('bad','กรุณาเลือก Table หรือ View ก่อน'); return null; }
+  sqlMsg('warn', busyText || ('กำลังเชื่อมต่อ '+esc(p.server)+' ...'));
   try{
     const res = await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
     const ct = res.headers.get('content-type')||'';
     if(!ct.includes('json')){
       sqlMsg('bad','ไม่พบ API ที่ <span class="mono">'+esc(api)+'</span> (ตอบกลับไม่ใช่ JSON)<br>'+
-        'ต้อง deploy ไฟล์ <span class="mono">api/sqlserver.js</span> ตามตัวอย่างขึ้น Vercel ก่อน'); return null;
+        'ถ้า SQL Server อยู่ในวง LAN ให้รัน <span class="mono">npm start</span> บนเครื่องในวงเดียวกัน แล้วเปิดเว็บจากเครื่องนั้น'); return null;
     }
     const data = await res.json();
     if(!res.ok || data.ok===false){ sqlMsg('bad','เชื่อมต่อไม่สำเร็จ: '+esc(data.error||('HTTP '+res.status))); return null; }
     return data;
   }catch(err){
-    sqlMsg('bad','เรียก API ไม่สำเร็จ: '+esc(err.message)+'<br>ตรวจสอบว่า deploy serverless function แล้ว และ URL ถูกต้อง');
-    return null;
+    sqlMsg('bad','เรียก API ไม่สำเร็จ: '+esc(err.message)+
+      '<br>ตรวจว่า API Endpoint ถูกต้อง และเครื่องที่รัน API มองเห็น SQL Server เครื่องนี้'); return null;
   }
 }
-$('#btnSqlTest').onclick = async () => { const d=await sqlCall('test'); if(d) sqlMsg('ok','เชื่อมต่อ SQL Server สำเร็จ'); };
-$('#btnSqlPull').onclick = async () => {
-  const d = await sqlCall('pull'); if(!d) return;
+$('#btnSqlTest').onclick = async () => {
+  const d = await sqlCall('test', {database:$('#sqlDb').value.trim()||'master'});
+  if(d) sqlMsg('ok','เชื่อมต่อ SQL Server สำเร็จ'+(d.version? ' — '+esc(String(d.version).split('\n')[0]) : ''));
+};
+
+/* ---------- ขั้นที่ 1 → 2 : ขอรายชื่อฐานข้อมูล ---------- */
+$('#btnSqlConnect').onclick = async () => {
+  const d = await sqlCall('databases', {database:'master'}, 'กำลังอ่านรายชื่อฐานข้อมูล...');
+  if(!d) return;
+  const list = d.databases||[], sysdb = d.system||[];
+  if(!list.length){ sqlMsg('warn','เชื่อมต่อได้ แต่บัญชีนี้ยังไม่เห็นฐานข้อมูลใด — พิมพ์ชื่อฐานข้อมูลเองได้'); }
+  $('#sqlDbList').innerHTML = list.map(n=>'<option'+(n===DB.sql.db?' selected':'')+'>'+esc(n)+
+    (sysdb.indexOf(n)>-1?' (ระบบ)':'')+'</option>').join('');
+  /* ตัดคำว่า (ระบบ) ออกตอนอ่านค่า → เก็บชื่อจริงไว้ใน value */
+  $$('#sqlDbList option').forEach((o,i)=>o.value=list[i]);
+  saveSqlForm();
+  sqlStep(2);
+  sqlMsg('ok','พบ '+list.length+' ฐานข้อมูล — เลือกฐานข้อมูลที่ต้องการ');
+};
+$('#btnSqlBack1').onclick = () => sqlStep(1);
+$('#btnSqlBack2').onclick = () => sqlStep(2);
+
+/* ---------- ขั้นที่ 2 → 3 : ขอรายชื่อ Table / View ---------- */
+$('#btnSqlUseDb').onclick = async () => {
+  const db = $('#sqlDbManual').value.trim() || $('#sqlDbList').value;
+  if(!db){ sqlMsg('bad','กรุณาเลือกหรือพิมพ์ชื่อฐานข้อมูล'); return; }
+  $('#sqlDb').value = db;
+  const d = await sqlCall('objects', {database:db}, 'กำลังอ่านรายชื่อ Table / View ใน '+esc(db)+' ...');
+  if(!d) return;
+  SQL_OBJS = d.objects||[];
+  $('#sqlDbName').textContent = '• ' + db;
+  saveSqlForm();
+  sqlStep(3);
+  renderSqlObjects();
+  sqlMsg('ok','พบ '+SQL_OBJS.length+' รายการใน '+esc(db)+' — เลือก Table หรือ View ที่เก็บเลขที่เอกสาร');
+};
+$('#sqlObjSearch').oninput = renderSqlObjects;
+$('#sqlObjType').onchange = renderSqlObjects;
+function sqlObjFiltered(){
+  const q=$('#sqlObjSearch').value.trim().toLowerCase(), t=$('#sqlObjType').value;
+  return SQL_OBJS.filter(o=> (!t || o.type===t) &&
+    (!q || (o.schema+'.'+o.name).toLowerCase().indexOf(q)>-1));
+}
+function renderSqlObjects(){
+  const list = sqlObjFiltered();
+  $('#sqlObjCount').textContent = list.length+' / '+SQL_OBJS.length+' รายการ';
+  if(!list.length){ $('#sqlObjTable').innerHTML='<div class="empty-state">ไม่พบ Table หรือ View ตามที่ค้นหา</div>'; return; }
+  $('#sqlObjTable').innerHTML = table(['ประเภท','Schema','ชื่อ',''],
+    list.map(o=>['<span class="obj-type '+(o.type==='VIEW'?'v':'t')+'">'+(o.type==='VIEW'?'View':'Table')+'</span>',
+      '<span class="subtle">'+esc(o.schema)+'</span>', '<b>'+esc(o.name)+'</b>',
+      '<button class="link" data-obj="'+esc(o.schema+'.'+o.name)+'">ดูตัวอย่างข้อมูล →</button>']));
+  $$('#sqlObjTable tbody tr').forEach((tr,i)=>{
+    const full = list[i].schema+'.'+list[i].name;
+    tr.classList.toggle('sel', full===SQL_SEL);
+    tr.onclick = () => sqlPickObject(full);
+  });
+}
+
+/* ---------- ขั้นที่ 3 → 4 : ดูตัวอย่างแล้วนำเข้า ---------- */
+async function sqlPickObject(full){
+  SQL_SEL = full;
+  $('#sqlView').value = full;
+  renderSqlObjects();
+  const d = await sqlCall('preview', {view:full}, 'กำลังอ่านตัวอย่างข้อมูลจาก '+esc(full)+' ...');
+  if(!d) return;
+  saveSqlForm();
+  sqlStep(4);
+  const cols = d.columns||[], rows = d.rows||[];
+  const matched = cols.filter(c=>mapHeader(c));
+  const hasDocNo = cols.some(c=>mapHeader(c)==='docNo');
+  $('#sqlPreview').innerHTML =
+    '<div class="panel flush" style="margin-top:16px"><div class="panel-title">'+
+      '<h3>ตัวอย่างข้อมูลจาก '+esc(full)+'</h3>'+
+      '<button class="primary sm" id="btnSqlPull">นำเข้าข้อมูลจาก '+esc(full)+'</button></div>'+
+    '<div style="padding:0 16px 12px">'+
+      (hasDocNo
+        ? '<div class="notice ok">จับคู่คอลัมน์ได้: '+matched.map(c=>'<span class="tag">'+esc(c)+' → '+esc(HEAD_TH[mapHeader(c)])+'</span>').join('')+'</div>'
+        : '<div class="notice warn">ไม่พบคอลัมน์ <b>เลขที่เอกสาร</b> (รองรับชื่อ: '+esc(HEAD_MAP.docNo.join(', '))+
+          ')<br>ถ้าเลือก View ผิด ให้เลือกใหม่ หรือสร้าง View ใน SQL Server ที่ตั้งชื่อคอลัมน์ให้ตรง</div>')+
+      '<span class="subtle">'+rows.length+' แถวแรกจากทั้งหมด • '+cols.length+' คอลัมน์</span>'+
+    '</div>'+
+    '<div class="tbl-wrap">'+ table(cols.map(esc),
+      rows.slice(0,15).map(r=>cols.map(c=>'<span class="subtle">'+esc(r[c]==null?'':r[c])+'</span>'))) +'</div></div>';
+  $('#btnSqlPull').onclick = sqlPull;
+  sqlMsg('ok','อ่านตัวอย่างจาก '+esc(full)+' สำเร็จ — ตรวจข้อมูลแล้วกด "นำเข้าข้อมูล"');
+}
+async function sqlPull(){
+  const full = SQL_SEL || $('#sqlView').value.trim();
+  const d = await sqlCall('pull', {view:full}, 'กำลังดึงข้อมูลจาก '+esc(full)+' ...');
+  if(!d) return;
   const rows = d.rows||[];
-  if(!rows.length){ sqlMsg('warn','เชื่อมต่อสำเร็จ แต่ไม่พบข้อมูลใน view'); return; }
-  const head = Object.keys(rows[0]);
+  if(!rows.length){ sqlMsg('warn','เชื่อมต่อสำเร็จ แต่ไม่มีข้อมูลใน '+esc(full)); return; }
+  const head = d.columns && d.columns.length ? d.columns : Object.keys(rows[0]);
   const arr = [head].concat(rows.map(r=>head.map(h=>r[h])));
-  buildPreview(arr, 'SQL Server: '+$('#sqlView').value.trim());
-  sqlMsg('ok','ดึงข้อมูล '+rows.length+' แถว — ตรวจสอบตัวอย่างที่แท็บ "นำเข้าจาก Excel" แล้วกดนำเข้า');
+  buildPreview(arr, 'SQL Server: '+full);
+  saveSqlForm();
+  sqlMsg('ok','ดึงข้อมูล '+rows.length+' แถว'+(d.truncated? ' (จำกัดที่ 5,000 แถวแรก)':'')+
+    ' — ตรวจสอบแล้วกดนำเข้าที่แท็บ "นำเข้าจาก Excel"');
   $$('#docTabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab==='excel'));
   $$('#v-docs .tabpage').forEach(p=>p.classList.toggle('on', p.id==='tab-excel'));
-};
+}
 
 /* ============================================================
    VEHICLES

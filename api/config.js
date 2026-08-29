@@ -52,7 +52,7 @@ module.exports = function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     res.status(200).json({
       ok: false,
-      error: 'ยังไม่ได้ตั้ง Environment Variables ที่ Vercel — ตั้ง NEXT_PUBLIC_SUPABASE_URL และ NEXT_PUBLIC_SUPABASE_ANON_KEY แล้ว Redeploy หนึ่งครั้ง'
+      error: 'ยังไม่ได้ตั้ง NEXT_PUBLIC_SUPABASE_URL และ NEXT_PUBLIC_SUPABASE_ANON_KEY — บน Vercel ตั้งที่ Settings → Environment Variables แล้ว Redeploy หนึ่งครั้ง / ถ้ารันเองในเครื่องให้ตั้งตัวแปรก่อนสั่ง npm start'
     });
     return;
   }

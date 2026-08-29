@@ -22,7 +22,7 @@
 npx serve .
 ```
 
-(การเชื่อมต่อ SQL Server ยังต้อง deploy ขึ้น Vercel ก่อนถึงจะใช้ได้)
+(อยากใช้การเชื่อมต่อ SQL Server ในเครื่องด้วย ให้ใช้ `npm start` แทน — ดูหัวข้อ "เชื่อมต่อ SQL Server")
 
 **บน Vercel**
 
@@ -61,7 +61,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY  = eyJhbGciOi...
 ```
 index.html               เว็บทั้งระบบ (HTML + CSS + JS ในไฟล์เดียว)
 api/config.js            ส่งค่า Supabase จาก Environment Variables ให้หน้าเว็บ
-api/sqlserver.js         Vercel Serverless Function เชื่อมต่อ SQL Server
+api/sqlserver.js         API เชื่อมต่อ SQL Server (ใช้ได้ทั้งบน Vercel และรันในเครื่อง)
+local-server.js          รันเว็บ + API ในเครื่อง สำหรับ SQL Server ที่อยู่ในวง LAN (npm start)
 supabase/schema.sql      ตาราง profiles + RLS + trigger (รันใน SQL Editor)
 Docs/SUPABASE-SETUP.md   ขั้นตอนตั้งค่า Supabase ตั้งแต่ต้นจนจบ
 Docs/KanBarcode.txt      ข้อกำหนดและบันทึกการพัฒนา
@@ -97,11 +98,44 @@ vercel.json              ตั้งค่า Vercel
 
 ## เชื่อมต่อ SQL Server
 
-เมนู **เอกสาร** → แท็บ **เชื่อมต่อ SQL Server** → กรอก Server, Port, Database,
-User, Password และชื่อ View → กด **ทดสอบการเชื่อมต่อ** แล้ว **ดึงข้อมูล**
+ใช้งานแบบเดียวกับ Excel → **Data** → **From Database** → **From SQL Server Database**
+เมนู **ข้อมูลเอกสาร** → แท็บ **เชื่อมต่อ SQL Server** แล้วทำ 4 ขั้น
 
-> รหัสผ่าน SQL Server จะถูกส่งไปที่ serverless function เท่านั้น และจะเก็บไว้ในเบราว์เซอร์
+1. **เซิร์ฟเวอร์** — กรอก Server / Port / Username / Password → กด **เชื่อมต่อ**
+2. **ฐานข้อมูล** — เลือกจากรายชื่อฐานข้อมูลที่บัญชีนี้เข้าถึงได้ (พิมพ์ชื่อเองก็ได้)
+3. **ตาราง / วิว** — เลือก Table หรือ View จากรายการ (ค้นหาและกรองตามประเภทได้)
+4. **นำเข้า** — ดูตัวอย่าง 50 แถวแรกพร้อมผลการจับคู่คอลัมน์ แล้วกดนำเข้า
+
+คอลัมน์ที่ระบบอ่าน: **แถว, เลขที่เอกสาร, วันที่เอกสาร, รหัสลูกค้า, ชื่อลูกค้า, ที่อยู่**
+(รองรับชื่ออังกฤษ DocNo, DocDate, CustCode, CustName, Address ด้วย)
+ถ้าชื่อคอลัมน์ในฐานข้อมูลไม่ตรง ให้สร้าง View ใน SQL Server ที่ตั้งชื่อคอลัมน์ให้ตรงแล้วเลือก View นั้น
+
+> รหัสผ่าน SQL Server จะถูกส่งไปที่ API เท่านั้น และจะเก็บไว้ในเบราว์เซอร์
 > ก็ต่อเมื่อติ๊ก "จำรหัสผ่าน" เอาไว้
+
+### SQL Server อยู่ในวง LAN (ใช้ IP ภายใน เช่น 192.168.x.x)
+
+เว็บบน Vercel อยู่บนอินเทอร์เน็ต **ต่อเข้า SQL Server ในวง LAN ไม่ได้**
+ให้รันตัวเว็บ + API บนเครื่องในวงเดียวกับ SQL Server แทน
+
+```
+npm install
+npm start
+```
+
+จะได้ที่อยู่แบบ `http://192.168.1.52:3000` ให้เครื่องอื่นในวงเปิดใช้งานได้เลย
+(ล็อกอิน Supabase ยังทำงานปกติ เพราะเรียกออกอินเทอร์เน็ตขาออกอย่างเดียว)
+
+ตั้งค่า Supabase ก่อนสั่ง `npm start` — PowerShell:
+
+```
+$env:NEXT_PUBLIC_SUPABASE_URL      = "https://xxxx.supabase.co"
+$env:NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGci..."
+npm start
+```
+
+> อย่าเปิดเว็บจาก Vercel (https) แล้วชี้ API Endpoint ไปที่ `http://192.168.x.x`
+> เบราว์เซอร์จะบล็อกเพราะเป็น mixed content — ต้องเปิดเว็บจากเครื่องที่รัน `npm start`
 
 ## ข้อมูลถูกเก็บที่ไหน
 
